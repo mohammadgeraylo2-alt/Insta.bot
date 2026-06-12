@@ -3,7 +3,6 @@ from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, Cal
 import yt_dlp
 import requests
 import os
-import re
 
 TOKEN = os.environ["BOT_TOKEN"]
 RAPIDAPI_KEY = os.environ["RAPIDAPI_KEY"]
@@ -43,18 +42,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await update.message.reply_text("سلام! لینک اینستاگرام یا یوتیوب بفرست")
 
-def get_youtube_id(url):
-    patterns = [
-        r'v=([a-zA-Z0-9_-]{11})',
-        r'youtu\.be/([a-zA-Z0-9_-]{11})',
-        r'shorts/([a-zA-Z0-9_-]{11})'
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, url)
-        if match:
-            return match.group(1)
-    return None
-
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     if not await is_member(context.bot, user_id):
@@ -64,19 +51,18 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if "youtube.com" in url or "youtu.be" in url:
         await update.message.reply_text("در حال دانلود از یوتیوب...")
         try:
-            video_id = get_youtube_id(url)
-            if not video_id:
-                await update.message.reply_text("لینک یوتیوب معتبر نیست.")
-                return
             headers = {
                 "x-rapidapi-key": RAPIDAPI_KEY,
-                "x-rapidapi-host": "youtube-video-fast-downloader-24-7.p.rapidapi.com"
+                "x-rapidapi-host": "hd-video-downloader.p.rapidapi.com"
             }
-            params = {"url": f"https://www.youtube.com/watch?v={video_id}", "quality": 247}
-            api_url = "https://youtube-video-fast-downloader-24-7.p.rapidapi.com/dl"
-            response = requests.get(api_url, headers=headers, params=params)
+            params = {"url": url, "quality": "720"}
+            response = requests.get("https://hd-video-downloader.p.rapidapi.com/api/youtube/download", headers=headers, params=params)
             data = response.json()
-            await update.message.reply_text(f"API response: {data}")
+            video_url = data.get("url") or data.get("link") or data.get("download_url") or data.get("downloadUrl")
+            if video_url:
+                await update.message.reply_video(video=video_url)
+            else:
+                await update.message.reply_text(f"response: {data}")
         except Exception as e:
             await update.message.reply_text(f"خطا: {e}")
         return
