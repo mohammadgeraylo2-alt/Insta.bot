@@ -20,8 +20,7 @@ async def not_joined_message(update):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        "⛔️ برای استفاده از ربات باید عضو کانال ما بشی!\n\n"
-        "بعد از عضویت روی دکمه عضو شدم بزن 👇",
+        "⛔️ برای استفاده از ربات باید عضو کانال ما بشی!\n\nبعد از عضویت روی دکمه عضو شدم بزن 👇",
         reply_markup=reply_markup
     )
 
@@ -31,9 +30,38 @@ async def check_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     if await is_member(context.bot, user_id):
         await query.answer("✅ عضویت تایید شد!")
         await query.message.reply_text(
-            "👋 سلام خوش اومدی!\n\n"
-            "با این ربات میتونی پست، ریلز و ویدیوهای اینستاگرام و یوتیوب رو دانلود کنی 📥\n\n"
-            "فقط لینک رو برام بفرستی!"
+            "👋 سلام خوش اومدی!\n\nبا این ربات میتونی پست، ریلز و ویدیوهای اینستاگرام و یوتیوب رو دانلود کنی 📥\n\nفقط لینک رو برام بفرستی!"
         )
     else:
-        a
+        await query.answer("❌ هنوز عضو نشدی!", show_alert=True)
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    if not await is_member(context.bot, user_id):
+        await not_joined_message(update)
+        return
+    await update.message.reply_text(
+        "👋 سلام خوش اومدی!\n\nبا این ربات میتونی پست، ریلز و ویدیوهای اینستاگرام و یوتیوب رو دانلود کنی 📥\n\nفقط لینک رو برام بفرستی!"
+    )
+
+async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    if not await is_member(context.bot, user_id):
+        await not_joined_message(update)
+        return
+    url = update.message.text.strip()
+    if "instagram.com" not in url and "youtube.com" not in url and "youtu.be" not in url:
+        await update.message.reply_text("لینک اینستاگرام یا یوتیوب بفرست.")
+        return
+    await update.message.reply_text("در حال دانلود...")
+    ydl_opts = {
+        'outtmpl': 'video.mp4',
+        'format': 'mp4',
+    }
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        await update.message.reply_video(video=open('video.mp4', 'rb'))
+    except Exception as e:
+        await update.message.reply_text(f"خطا: {e}")
+    finall
