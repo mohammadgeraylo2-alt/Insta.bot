@@ -1,9 +1,16 @@
 from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
+from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters, ContextTypes
 import yt_dlp
 import os
 
-TOKEN = os.environ["BOT_TOKEN"]
+TOKEN = os.environ["8720771196:AAEXzEBU-l4iOrvcDQeYg3rfnQvYJv_N-Ho"]
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "👋 سلام خوش اومدی!\n\n"
+        "با این ربات میتونی پست، ریلز و ویدیوهای اینستاگرام رو دانلود کنی 📥\n\n"
+        "فقط لینک پست رو برام بفرستی!"
+    )
 
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
@@ -33,5 +40,6 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             os.remove('video.mp4')
 
 app = ApplicationBuilder().token(TOKEN).build()
+app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
-app.run_polling()
+app.run_polling()app.run_polling()
