@@ -76,11 +76,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             api_url = f"https://youtube-video-fast-downloader-24-7.p.rapidapi.com/download_video/{video_id}"
             response = requests.get(api_url, headers=headers, params=params)
             data = response.json()
-            video_url = data.get("url") or data.get("link") or data.get("download_url")
-            if video_url:
-                await update.message.reply_video(video=video_url)
-            else:
-                await update.message.reply_text(f"خطا: {data}")
+            await update.message.reply_text(f"API response: {data}")
         except Exception as e:
             await update.message.reply_text(f"خطا: {e}")
         return
