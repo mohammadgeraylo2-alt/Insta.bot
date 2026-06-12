@@ -56,9 +56,9 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "x-rapidapi-host": "hd-video-downloader.p.rapidapi.com"
             }
             params = {"url": url, "quality": "720"}
-            response = requests.get("https://hd-video-downloader.p.rapidapi.com/api/youtube/download", headers=headers, params=params)
+            response = requests.get("https://hd-video-downloader.p.rapidapi.com/download", headers=headers, params=params)
             data = response.json()
-            video_url = data.get("url") or data.get("link") or data.get("download_url") or data.get("downloadUrl")
+            video_url = data.get("download_url") or data.get("url") or data.get("link")
             if video_url:
                 await update.message.reply_video(video=video_url)
             else:
