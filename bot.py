@@ -1,5 +1,5 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters, ContextTypes
+from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, CallbackQueryHandler, filters, ContextTypes
 import yt_dlp
 import os
 
@@ -14,13 +14,29 @@ async def is_member(bot, user_id):
         return False
 
 async def not_joined_message(update):
-    keyboard = [[InlineKeyboardButton("عضویت در کانال 📢", url=f"https://t.me/downloader_hamechi")]]
+    keyboard = [
+        [InlineKeyboardButton("عضویت در کانال 📢", url="https://t.me/downloader_hamechi")],
+        [InlineKeyboardButton("عضو شدم ✅", callback_data="check_join")]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
         "⛔️ برای استفاده از ربات باید عضو کانال ما بشی!\n\n"
-        "بعد از عضویت دوباره امتحان کن 👇",
+        "بعد از عضویت روی دکمه عضو شدم بزن 👇",
         reply_markup=reply_markup
     )
+
+async def check_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    user_id = query.from_user.id
+    if await is_member(context.bot, user_id):
+        await query.answer("✅ عضویت تایید شد!")
+        await query.message.reply_text(
+            "👋 سلام خوش اومدی!\n\n"
+            "با این ربات میتونی پست، ریلز و ویدیوهای اینستاگرام رو دانلود کنی 📥\n\n"
+            "فقط لینک پست رو برام بفرستی!"
+        )
+    else:
+        await query.answer("❌ هنوز عضو نشدی!", show_alert=True)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -67,5 +83,6 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
+app.add_handler(CallbackQueryHandler(check_join_callback, pattern="check_join"))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
 app.run_polling()
