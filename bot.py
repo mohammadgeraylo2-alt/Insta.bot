@@ -101,6 +101,25 @@ app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CallbackQueryHandler(check_join_callback, pattern="check_join"))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
+app.run_polling()    await update.message.reply_text("در حال دانلود...")
+    ydl_opts = {
+        'outtmpl': 'video.mp4',
+        'format': 'mp4',
+    }
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        await update.message.reply_video(video=open('video.mp4', 'rb'))
+    except Exception as e:
+        await update.message.reply_text(f"خطا: {e}")
+    finally:
+        if os.path.exists('video.mp4'):
+            os.remove('video.mp4')
+
+app = ApplicationBuilder().token(TOKEN).build()
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CallbackQueryHandler(check_join_callback, pattern="check_join"))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
 app.run_polling()        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
         await update.message.reply_video(video=open('video.mp4', 'rb'))
