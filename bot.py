@@ -72,8 +72,8 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "x-rapidapi-key": RAPIDAPI_KEY,
                 "x-rapidapi-host": "youtube-video-fast-downloader-24-7.p.rapidapi.com"
             }
-            params = {"quality": 247}
-            api_url = f"https://youtube-video-fast-downloader-24-7.p.rapidapi.com/download_video/{video_id}"
+            params = {"url": f"https://www.youtube.com/watch?v={video_id}", "quality": 247}
+            api_url = "https://youtube-video-fast-downloader-24-7.p.rapidapi.com/dl"
             response = requests.get(api_url, headers=headers, params=params)
             data = response.json()
             await update.message.reply_text(f"API response: {data}")
