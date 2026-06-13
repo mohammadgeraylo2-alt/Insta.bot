@@ -36,7 +36,7 @@ async def check_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     user_id = query.from_user.id
     if await is_member(context.bot, user_id):
         await query.answer("عضویت تایید شد")
-        await query.message.reply_text("سلام! لینک اینستاگرام بفرست یا از /search استفاده کن")
+    
     else:
         await query.answer("هنوز عضو نشدی", show_alert=True)
 
