@@ -9,6 +9,7 @@ RAPIDAPI_KEY = os.environ["RAPIDAPI_KEY"]
 CHANNEL = "@downloader_hamechi"
 user_urls = {}
 user_search_results = {}
+user_artist_data = {}  # ذخیره اطلاعات آرتیست برای "همه آهنگ‌ها"
 
 async def is_member(bot, user_id):
     try:
@@ -52,53 +53,29 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
-def normalize(text):
-    """حروف شبیه به هم رو یکی میکنه تا سرچ دقیق‌تر باشه"""
-    replacements = {
-        'ک': 'k', 'ی': 'i', 'ا': 'a', 'و': 'o', 'ه': 'h',
-        'ن': 'n', 'م': 'm', 'ر': 'r', 'ت': 't', 'س': 's',
-        'ع': 'a', 'ح': 'h', 'ق': 'gh', 'خ': 'kh', 'ش': 'sh',
-        'ز': 'z', 'ژ': 'zh', 'چ': 'ch', 'پ': 'p', 'ب': 'b',
-        'گ': 'g', 'ف': 'f', 'ل': 'l', 'د': 'd', 'ج': 'j',
-    }
-    result = text.lower()
-    for fa, en in replacements.items():
-        result = result.replace(fa, en)
-    return result
-
 def fuzzy_score(query, title):
-    """امتیاز شباهت بین query و title"""
     q = query.lower()
     t = title.lower()
     score = 0
-
-    # اگه عین هم بود
     if q == t:
         return 100
-
-    # اگه title با query شروع میشه
     if t.startswith(q) or q.startswith(t):
         score += 50
-
-    # تعداد کلمات مشترک
     q_words = set(q.split())
     t_words = set(t.split())
     common = q_words & t_words
     score += len(common) * 20
-
-    # شباهت کاراکتری (برای غلط‌های تایپی مثل vinak vs vinaak)
     q_chars = set(q.replace(" ", ""))
     t_chars = set(t.replace(" ", ""))
     char_overlap = len(q_chars & t_chars) / max(len(q_chars), len(t_chars), 1)
     score += int(char_overlap * 30)
-
     return score
 
 def search_songs(query):
     results = []
     seen_titles = set()
 
-    # ۱. سرچ در SoundCloud
+    # سرچ SoundCloud
     ydl_opts = {"quiet": True, "extract_flat": True}
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -118,14 +95,22 @@ def search_songs(query):
     except:
         pass
 
-    # ۲. سرچ در Deezer
+    # سرچ Deezer
+    top_artist_id = None
+    top_artist_name = None
     try:
         r = requests.get(
             "https://api.deezer.com/search",
             params={"q": query, "limit": 10},
             timeout=8
         )
-        for track in r.json().get("data", []):
+        tracks = r.json().get("data", [])
+        if tracks:
+            # آرتیست اول رو برای "همه آهنگ‌ها" ذخیره کن
+            top_artist_id = tracks[0].get("artist", {}).get("id")
+            top_artist_name = tracks[0].get("artist", {}).get("name")
+
+        for track in tracks:
             title = track.get("title", "")
             artist = track.get("artist", {}).get("name", "")
             key = f"{title} {artist}".lower().strip()
@@ -135,15 +120,34 @@ def search_songs(query):
                     "title": title,
                     "artist": artist,
                     "duration": track.get("duration", 0),
-                    "url": None,  # بعداً از SoundCloud دانلود میشه
+                    "url": None,
                     "score": fuzzy_score(query, f"{title} {artist}")
                 })
     except:
         pass
 
-    # مرتب‌سازی بر اساس امتیاز
     results.sort(key=lambda x: x["score"], reverse=True)
-    return results[:8]
+    return results[:5], top_artist_id, top_artist_name
+
+def get_artist_tracks(artist_id):
+    try:
+        r = requests.get(
+            f"https://api.deezer.com/artist/{artist_id}/top",
+            params={"limit": 50},
+            timeout=8
+        )
+        tracks = r.json().get("data", [])
+        results = []
+        for track in tracks:
+            results.append({
+                "title": track.get("title", ""),
+                "artist": track.get("artist", {}).get("name", ""),
+                "duration": track.get("duration", 0),
+                "url": None,
+            })
+        return results
+    except:
+        return []
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -168,11 +172,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "x-rapidapi-host": host,
             "Content-Type": "text/plain"
         }
-        r = requests.post(
-            f"https://{host}/songs/v2/detect",
-            headers=headers,
-            data=audio_b64
-        )
+        r = requests.post(f"https://{host}/songs/v2/detect", headers=headers, data=audio_b64)
         data = r.json()
         track = data.get("track")
 
@@ -220,7 +220,6 @@ async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "quiet": True
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # اگه URL مستقیم داشت ازش استفاده کن، وگرنه سرچ کن
             if url:
                 ydl.download([url])
             else:
@@ -238,6 +237,44 @@ async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     finally:
         if os.path.exists(f"song_{user_id}.mp3"):
             os.remove(f"song_{user_id}.mp3")
+
+async def all_songs_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    user_id = query.from_user.id
+    await query.answer("در حال دریافت لیست...")
+
+    artist_data = user_artist_data.get(user_id)
+    if not artist_data:
+        await query.message.reply_text("خطا، دوباره سرچ کن.")
+        return
+
+    artist_id = artist_data["id"]
+    artist_name = artist_data["name"]
+
+    msg = await query.message.reply_text(f"🎤 دارم آهنگ‌های {artist_name} رو میگیرم...")
+
+    tracks = get_artist_tracks(artist_id)
+    if not tracks:
+        await msg.edit_text("آهنگی پیدا نشد 😔")
+        return
+
+    user_search_results[user_id] = tracks
+
+    keyboard = []
+    for i, track in enumerate(tracks):
+        title = track.get("title", "نامشخص")[:28]
+        artist = track.get("artist", "")[:15]
+        keyboard.append([InlineKeyboardButton(
+            f"🎵 {title} - {artist}",
+            callback_data=f"dl_{i}"
+        )])
+
+    await msg.delete()
+    await query.message.reply_text(
+        f"🎤 *همه آهنگ‌های {artist_name}:*",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
 async def download_and_send(update, context, title, artist, msg):
     user_id = update.message.from_user.id
@@ -357,22 +394,31 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         msg = await update.message.reply_text("🔍 دارم سرچ میکنم...")
         try:
-            results = search_songs(text)
+            results, artist_id, artist_name = search_songs(text)
             if not results:
                 await msg.edit_text("نتیجه‌ای پیدا نشد 😔")
                 return
 
             user_search_results[user_id] = results
+
+            # ذخیره آرتیست برای دکمه "همه آهنگ‌ها"
+            if artist_id:
+                user_artist_data[user_id] = {"id": artist_id, "name": artist_name}
+
             keyboard = []
             for i, track in enumerate(results):
                 title = track.get("title", "نامشخص")[:28]
                 artist = track.get("artist", "")[:15]
-                duration = track.get("duration", 0)
-                mins = int(duration) // 60 if duration else 0
-                secs = int(duration) % 60 if duration else 0
                 keyboard.append([InlineKeyboardButton(
-                    f"🎵 {title} - {artist} ({mins}:{secs:02d})",
+                    f"🎵 {title} - {artist}",
                     callback_data=f"dl_{i}"
+                )])
+
+            # دکمه همه آهنگ‌ها
+            if artist_id and artist_name:
+                keyboard.append([InlineKeyboardButton(
+                    f"🎤 همه آهنگ‌های {artist_name}",
+                    callback_data="all_songs"
                 )])
 
             await msg.edit_text(
@@ -387,7 +433,9 @@ app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CallbackQueryHandler(check_join_callback, pattern="check_join"))
 app.add_handler(CallbackQueryHandler(song_callback, pattern="get_song"))
+app.add_handler(CallbackQueryHandler(all_songs_callback, pattern="all_songs"))
 app.add_handler(CallbackQueryHandler(download_callback, pattern="^dl_"))
 app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
 app.run_polling()
+
