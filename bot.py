@@ -230,10 +230,11 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
         r = requests.post(f"https://{host}/songs/v2/detect", headers=headers, data=audio_b64)
         data = r.json()
+        print("SHAZAM RESPONSE:", data)
         track = data.get("track")
 
         if not track:
-            await msg.edit_text("آهنگی شناسایی نشد 😔")
+            await msg.edit_text(f"آهنگی شناسایی نشد 😔\n\n`{str(data)[:200]}`", parse_mode="Markdown")
             return
 
         title = track.get("title", "نامشخص")
