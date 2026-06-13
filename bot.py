@@ -74,6 +74,8 @@ def fuzzy_score(query, title):
 def search_songs(query):
     results = []
     seen_titles = set()
+    top_artist_id = None
+    top_artist_name = None
 
     # سرچ SoundCloud
     ydl_opts = {"quiet": True, "extract_flat": True}
@@ -96,8 +98,6 @@ def search_songs(query):
         pass
 
     # سرچ Deezer
-    top_artist_id = None
-    top_artist_name = None
     try:
         r = requests.get(
             "https://api.deezer.com/search",
@@ -106,20 +106,20 @@ def search_songs(query):
         )
         tracks = r.json().get("data", [])
 
-        # پیدا کردن آرتیست با بیشترین تکرار در نتایج
-        artist_counter = {}
+        # پیدا کردن آرتیستی که اسمش بیشترین شباهت به query داره
+        artist_scores = {}
         for track in tracks:
             a_id = track.get("artist", {}).get("id")
             a_name = track.get("artist", {}).get("name", "")
-            if a_id:
-                if a_id not in artist_counter:
-                    artist_counter[a_id] = {"count": 0, "name": a_name}
-                artist_counter[a_id]["count"] += 1
+            if a_id and a_id not in artist_scores:
+                # مقایسه مستقیم اسم آرتیست با query
+                score = fuzzy_score(query, a_name)
+                artist_scores[a_id] = {"name": a_name, "score": score}
 
-        if artist_counter:
-            best_artist_id = max(artist_counter, key=lambda x: artist_counter[x]["count"])
-            top_artist_id = best_artist_id
-            top_artist_name = artist_counter[best_artist_id]["name"]
+        if artist_scores:
+            best_id = max(artist_scores, key=lambda x: artist_scores[x]["score"])
+            top_artist_id = best_id
+            top_artist_name = artist_scores[best_id]["name"]
 
         for track in tracks:
             title = track.get("title", "")
