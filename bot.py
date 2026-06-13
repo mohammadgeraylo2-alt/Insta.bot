@@ -57,10 +57,11 @@ def search_soundcloud(query):
     ydl_opts = {
         "quiet": True,
         "extract_flat": True,
-        "default_search": "scsearch5",
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        result = ydl.extract_info(query, download=False)
+        result = ydl.extract_info(f"scsearch5:{query}", download=False)
+        if not result:
+            return []
         return result.get("entries", [])
 
 async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -159,7 +160,11 @@ async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     track = results[index]
     title = track.get("title", "نامشخص")
-    url = track.get("url", "")
+    url = track.get("url") or track.get("webpage_url", "")
+
+    if not url:
+        await query.message.reply_text("❌ لینک پیدا نشد، دوباره سرچ کن.")
+        return
 
     msg = await query.message.reply_text(f"⬇️ دارم دانلود میکنم...\n🎵 {title}")
 
