@@ -63,7 +63,13 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_video(video=open("video.mp4", "rb"), reply_markup=reply_markup)
         try:
             song_data = get_song(url)
-            await update.message.reply_text(f"song data: {song_data}")
+            track = song_data.get("track") or song_data.get("song")
+if track:
+    title = track.get("title") or track.get("name", "نامشخص")
+    artist = track.get("subtitle") or track.get("artist", "نامشخص")
+    await update.message.reply_text(f"🎵 آهنگ: {title}\n👤 خواننده: {artist}")
+else:
+    await update.message.reply_text("آهنگی پیدا نشد") {song_data}")
         except Exception as song_err:
             await update.message.reply_text(f"song error: {song_err}")
     except Exception as e:
