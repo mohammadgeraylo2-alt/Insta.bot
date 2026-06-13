@@ -1,5 +1,5 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, CallbackQueryHandler, filters, ContextTypes
+from telegram.ext imp ort ApplicationBuilder, MessageHandler, CommandHandler, CallbackQueryHandler, filters, ContextTypes
 import yt_dlp
 import requests
 import os
@@ -71,7 +71,7 @@ async def song_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await msg.edit_text(f"🎵 {title} - {artist}\n⬇️ دارم دانلود میکنم...")
 
-        search_query = f"{title} {artist} official audio"
+        search_query = f"scsearch1:{title} {artist}"
         mp3_path = f"song_{user_id}.mp3"
 
         ydl_opts = {
