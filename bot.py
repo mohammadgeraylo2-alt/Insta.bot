@@ -23,8 +23,8 @@ async def not_joined_message(update):
     ]
     await update.message.reply_text(
     "*👋 سلام!*\n\n"
-    "برای استفاده از ربات، اول باید عضو کانال ما بشی 🙏\n\n"
-    "📢 بعد از عضویت روی دکمه «عضو شدم» بزن",
+    "*برای استفاده از ربات، اول باید عضو کانال ما بشی 🙏*\n\n"
+    "*📢 بعد از عضویت روی دکمه «عضو شدم» بزن*",
     parse_mode="Markdown",
     reply_markup=InlineKeyboardMarkup(keyboard)
     )
