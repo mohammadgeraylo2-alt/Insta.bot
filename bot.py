@@ -494,8 +494,6 @@ elif isinstance(data, dict):
             data.get("video_url") or
             data.get("media_url") or
             data.get("download_url")
-        )")
-                    )
 
                 if not video_url:
                     await msg.edit_text(f"❌ استوری پیدا نشد\nجواب API: {data}")
