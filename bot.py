@@ -36,13 +36,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await update.message.reply_text("سلام! لینک اینستاگرام بفرست")
 
-async def get_song(url):
-    headers = {
-        "x-rapidapi-key": RAPIDAPI_KEY,
-        "x-rapidapi-host": "reels-tiktok-shorts-song-recognition-api-shazam.p.rapidapi.com"
-    }
+def get_song(url):
+    host = "reels-tiktok-shorts-song-recognition-api-shazam.p.rapidapi.com"
+    api_url = "https://" + host + "/recognize/social/url"
+    headers = {"x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": host}
     params = {"url": url}
-    response = requests.get("https://reels-tiktok-shorts-song-recognition-api-shazam.p.rapidapi.com/recognize/social/url", headers=headers, params=params)", headers=headers, params=params)
+    response = requests.get(api_url, headers=headers, params=params)
     return response.json()
 
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -59,11 +58,11 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
-        keyboard = [[InlineKeyboardButton("کانال ما 📢", url="https://t.me/downloader_hamechi")]]
+        keyboard = [[InlineKeyboardButton("کانال ما", url="https://t.me/downloader_hamechi")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_video(video=open("video.mp4", "rb"), reply_markup=reply_markup)
         try:
-            song_data = await get_song(url)
+            song_data = get_song(url)
             await update.message.reply_text(f"song data: {song_data}")
         except Exception as song_err:
             await update.message.reply_text(f"song error: {song_err}")
