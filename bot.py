@@ -44,6 +44,14 @@ def get_song(url):
     response = requests.get(api_url, headers=headers, params=params)
     return response.json()
 
+def get_song_info(song_data):
+    track = song_data.get("track")
+    if track:
+        title = track.get("title", "نامشخص")
+        artist = track.get("subtitle", "نامشخص")
+        return title, artist
+    return None, None
+
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     if not await is_member(context.bot, user_id):
@@ -63,9 +71,11 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_video(video=open("video.mp4", "rb"), reply_markup=reply_markup)
         try:
             song_data = get_song(url)
-            await update.message.reply_text(str(song_data)[:200])
-        except Exception as song_err:
-            await update.message.reply_text(f"song error: {song_err}")
+            title, artist = get_song_info(song_data)
+            if title:
+                await update.message.reply_text(f"🎵 آهنگ: {title}\n👤 خواننده: {artist}")
+        except:
+            pass
     except Exception as e:
         await update.message.reply_text(f"خطا: {e}")
     finally:
