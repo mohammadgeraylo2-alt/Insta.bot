@@ -211,18 +211,20 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         video = update.message.video or update.message.document
         file = await video.get_file()
-        file_url = file.file_path  # لینک مستقیم فایل از تلگرام
+        file_url = file.file_path
 
         host = "reels-tiktok-shorts-song-recognition-api-shazam.p.rapidapi.com"
         api_url = f"https://{host}/recognize/social/url"
         headers = {"x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": host}
         r = requests.get(api_url, headers=headers, params={"url": file_url})
         data = r.json()
-        print("RESPONSE:", data)
         track = data.get("track")
 
         if not track:
-            await msg.edit_text(f"آهنگی شناسایی نشد 😔\n`{str(data)[:200]}`", parse_mode="Markdown")
+            if data.get("matches") == []:
+                await msg.edit_text("آهنگی تو این ویدیو شناسایی نشد 😔\nشاید صدا واضح نباشه یا موزیک نداشته باشه.")
+            else:
+                await msg.edit_text("آهنگی شناسایی نشد 😔")
             return
 
         title = track.get("title", "نامشخص")
@@ -233,11 +235,48 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await msg.edit_text(f"❌ خطا: {e}")
-    finally:
-        if os.path.exists(video_path):
-            os.remove(video_path)
-        if os.path.exists(audio_path):
-            os.remove(audio_path)
+
+async def download_and_send(update, context, title, artist, msg):
+    user_id = update.message.from_user.id
+    mp3_path = f"song_{user_id}.mp3"
+
+    ydl_opts = {
+        "format": "bestaudio/best",
+        "outtmpl": f"song_{user_id}.%(ext)s",
+        "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3"}],
+        "quiet": True,
+        "noplaylist": True
+    }
+
+    downloaded = False
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([f"scsearch1:{title} {artist}"])
+        downloaded = True
+    except:
+        pass
+
+    if not downloaded:
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([f"ytsearch1:{title} {artist}"])
+            downloaded = True
+        except:
+            pass
+
+    if not downloaded:
+        await msg.edit_text("❌ دانلود ممکن نشد، دوباره امتحان کن.")
+        return
+
+    await update.message.reply_audio(
+        audio=open(mp3_path, "rb"),
+        title=title,
+        performer=artist
+    )
+    await msg.delete()
+
+    if os.path.exists(mp3_path):
+        os.remove(mp3_path)
 
 async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -258,32 +297,50 @@ async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     msg = await query.message.reply_text(f"⬇️ دارم دانلود میکنم...\n🎵 {title} - {artist}")
 
+    mp3_path = f"song_{user_id}.mp3"
+    ydl_opts = {
+        "format": "bestaudio/best",
+        "outtmpl": f"song_{user_id}.%(ext)s",
+        "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3"}],
+        "quiet": True,
+        "noplaylist": True
+    }
+
+    downloaded = False
     try:
-        mp3_path = f"song_{user_id}.mp3"
-        ydl_opts = {
-            "format": "bestaudio/best",
-            "outtmpl": f"song_{user_id}.%(ext)s",
-            "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3"}],
-            "quiet": True
-        }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             if url:
                 ydl.download([url])
             else:
                 ydl.download([f"scsearch1:{title} {artist}"])
+        downloaded = True
+    except:
+        pass
 
+    if not downloaded:
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([f"ytsearch1:{title} {artist}"])
+            downloaded = True
+        except:
+            pass
+
+    if not downloaded:
+        await msg.edit_text("❌ دانلود ممکن نشد، دوباره امتحان کن.")
+        return
+
+    try:
         await query.message.reply_audio(
             audio=open(mp3_path, "rb"),
             title=title,
             performer=artist
         )
         await msg.delete()
-
     except Exception as e:
         await msg.edit_text(f"❌ خطا: {e}")
     finally:
-        if os.path.exists(f"song_{user_id}.mp3"):
-            os.remove(f"song_{user_id}.mp3")
+        if os.path.exists(mp3_path):
+            os.remove(mp3_path)
 
 async def all_songs_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -323,30 +380,6 @@ async def all_songs_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-async def download_and_send(update, context, title, artist, msg):
-    user_id = update.message.from_user.id
-    mp3_path = f"song_{user_id}.mp3"
-
-    ydl_opts = {
-        "format": "bestaudio/best",
-        "outtmpl": f"song_{user_id}.%(ext)s",
-        "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3"}],
-        "quiet": True
-    }
-
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([f"scsearch1:{title} {artist}"])
-
-    await update.message.reply_audio(
-        audio=open(mp3_path, "rb"),
-        title=title,
-        performer=artist
-    )
-    await msg.delete()
-
-    if os.path.exists(mp3_path):
-        os.remove(mp3_path)
-
 def get_song(url):
     host = "reels-tiktok-shorts-song-recognition-api-shazam.p.rapidapi.com"
     api_url = "https://" + host + "/recognize/social/url"
@@ -384,11 +417,29 @@ async def song_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "format": "bestaudio/best",
             "outtmpl": f"song_{user_id}.%(ext)s",
             "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3"}],
-            "quiet": True
+            "quiet": True,
+            "noplaylist": True
         }
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([f"scsearch1:{title} {artist}"])
+        downloaded = False
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([f"scsearch1:{title} {artist}"])
+            downloaded = True
+        except:
+            pass
+
+        if not downloaded:
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([f"ytsearch1:{title} {artist}"])
+                downloaded = True
+            except:
+                pass
+
+        if not downloaded:
+            await msg.edit_text("❌ دانلود ممکن نشد.")
+            return
 
         await query.message.reply_audio(
             audio=open(mp3_path, "rb"),
