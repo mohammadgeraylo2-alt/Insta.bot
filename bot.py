@@ -53,15 +53,25 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 def search_songs(query):
+    # سرچ در SoundCloud با کیفیت بهتر
     ydl_opts = {
         "quiet": True,
         "extract_flat": True,
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        result = ydl.extract_info(f"ytsearch5:{query} official audio", download=False)
+        result = ydl.extract_info(f"scsearch10:{query}", download=False)
         if not result:
             return []
-        return result.get("entries", [])
+        entries = result.get("entries", [])
+
+        # فیلتر کن: فقط آهنگ‌هایی که عنوانشون شبیه query هست بالا بیان
+        query_words = query.lower().split()
+        def score(track):
+            title = track.get("title", "").lower()
+            return sum(1 for w in query_words if w in title)
+
+        entries_sorted = sorted(entries, key=score, reverse=True)
+        return entries_sorted[:5]
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -152,12 +162,11 @@ async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await msg.edit_text(f"❌ خطا: {e}")
     finally:
-        if os.path.exists(mp3_path):
-            os.remove(mp3_path)
+        if os.path.exists(f"song_{user_id}.mp3"):
+            os.remove(f"song_{user_id}.mp3")
 
 async def download_and_send(update, context, title, artist, msg):
     user_id = update.message.from_user.id
-    search_query = f"ytsearch1:{title} {artist} official audio"
     mp3_path = f"song_{user_id}.mp3"
 
     ydl_opts = {
@@ -168,7 +177,7 @@ async def download_and_send(update, context, title, artist, msg):
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([search_query])
+        ydl.download([f"scsearch1:{title} {artist}"])
 
     await update.message.reply_audio(
         audio=open(mp3_path, "rb"),
@@ -212,9 +221,7 @@ async def song_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await msg.edit_text(f"🎵 {title} - {artist}\n⬇️ دارم دانلود میکنم...")
 
-        search_query = f"ytsearch1:{title} {artist} official audio"
         mp3_path = f"song_{user_id}.mp3"
-
         ydl_opts = {
             "format": "bestaudio/best",
             "outtmpl": f"song_{user_id}.%(ext)s",
@@ -223,7 +230,7 @@ async def song_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([search_query])
+            ydl.download([f"scsearch1:{title} {artist}"])
 
         await query.message.reply_audio(
             audio=open(mp3_path, "rb"),
@@ -247,7 +254,6 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = update.message.text.strip()
 
-    # اگه لینک اینستاگرام بود
     if "instagram.com" in text:
         await update.message.reply_text("در حال دانلود...")
         ydl_opts = {
@@ -274,7 +280,6 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if os.path.exists(f"video_{user_id}.mp4"):
                 os.remove(f"video_{user_id}.mp4")
 
-    # اگه متن معمولی بود، سرچ آهنگ
     else:
         msg = await update.message.reply_text("🔍 دارم سرچ میکنم...")
         try:
