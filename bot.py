@@ -1,5 +1,6 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, CallbackQueryHandler, filters, ContextTypes
+from instagrapi import Client
 import yt_dlp
 import requests
 import os
@@ -10,6 +11,14 @@ CHANNEL = "@downloader_hamechi"
 user_urls = {}
 user_search_results = {}
 user_artist_data = {}
+
+# لاگین اینستاگرام
+cl = Client()
+try:
+    cl.login(os.environ["IG_USERNAME"], os.environ["IG_PASSWORD"])
+    print("Instagram login successful")
+except Exception as e:
+    print(f"Instagram login failed: {e}")
 
 async def is_member(bot, user_id):
     try:
@@ -47,7 +56,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await update.message.reply_text(
         "*سلام! 👋*\n\n"
-        "*لینک اینستاگرام بفرست* برای دانلود ویدیو\n"
+        "*لینک پست اینستاگرام بفرست* برای دانلود ویدیو\n"
+        "*لینک استوری اینستاگرام بفرست* برای دانلود استوری\n"
         "*اسم آهنگ بنویس* برای سرچ و دانلود\n"
         "*ویس بفرست* برای شناسایی آهنگ\n"
         "*ویدیو فوروارد کن* برای دریافت آهنگش",
@@ -464,30 +474,75 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
 
     if "instagram.com" in text:
-        await update.message.reply_text("در حال دانلود...")
-        ydl_opts = {
-            "outtmpl": f"video_{user_id}.mp4",
-            "format": "best[ext=mp4]/best",
-            "noplaylist": True
-        }
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([text])
+        if "/stories/" in text:
+            # دانلود استوری
+            msg = await update.message.reply_text("⬇️ دارم استوری رو دانلود میکنم...")
+            try:
+                parts = text.rstrip("/").split("/")
+                username = parts[parts.index("stories") + 1]
 
-            user_urls[user_id] = text
-            keyboard = [
-                [InlineKeyboardButton("کانال ما 📢", url="https://t.me/downloader_hamechi")],
-                [InlineKeyboardButton("🎵 دریافت آهنگ", callback_data="get_song")]
-            ]
-            await update.message.reply_video(
-                video=open(f"video_{user_id}.mp4", "rb"),
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-        except Exception as e:
-            await update.message.reply_text(f"خطا: {e}")
-        finally:
-            if os.path.exists(f"video_{user_id}.mp4"):
-                os.remove(f"video_{user_id}.mp4")
+                user_info = cl.user_info_by_username(username)
+                stories = cl.user_stories(user_info.pk)
+
+                if not stories:
+                    await msg.edit_text("استوری‌ای پیدا نشد یا اکانت خصوصیه 😔")
+                    return
+
+                keyboard = [
+                    [InlineKeyboardButton("کانال ما 📢", url="https://t.me/downloader_hamechi")],
+                    [InlineKeyboardButton("🎵 دریافت آهنگ", callback_data="get_song")]
+                ]
+
+                for story in stories:
+                    path = cl.story_download(story.pk, folder="./")
+                    path_str = str(path)
+                    user_urls[user_id] = text
+
+                    if story.media_type == 2:  # ویدیو
+                        await update.message.reply_video(
+                            video=open(path_str, "rb"),
+                            reply_markup=InlineKeyboardMarkup(keyboard)
+                        )
+                    else:  # عکس
+                        await update.message.reply_photo(
+                            photo=open(path_str, "rb"),
+                            reply_markup=InlineKeyboardMarkup(keyboard)
+                        )
+
+                    if os.path.exists(path_str):
+                        os.remove(path_str)
+
+                await msg.delete()
+
+            except Exception as e:
+                await msg.edit_text(f"❌ خطا: {e}")
+
+        else:
+            # دانلود پست معمولی
+            await update.message.reply_text("در حال دانلود...")
+            ydl_opts = {
+                "outtmpl": f"video_{user_id}.mp4",
+                "format": "best[ext=mp4]/best",
+                "noplaylist": True
+            }
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([text])
+
+                user_urls[user_id] = text
+                keyboard = [
+                    [InlineKeyboardButton("کانال ما 📢", url="https://t.me/downloader_hamechi")],
+                    [InlineKeyboardButton("🎵 دریافت آهنگ", callback_data="get_song")]
+                ]
+                await update.message.reply_video(
+                    video=open(f"video_{user_id}.mp4", "rb"),
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+            except Exception as e:
+                await update.message.reply_text(f"خطا: {e}")
+            finally:
+                if os.path.exists(f"video_{user_id}.mp4"):
+                    os.remove(f"video_{user_id}.mp4")
 
     else:
         msg = await update.message.reply_text("🔍 دارم سرچ میکنم...")
@@ -532,6 +587,4 @@ app.add_handler(CallbackQueryHandler(song_callback, pattern="get_song"))
 app.add_handler(CallbackQueryHandler(all_songs_callback, pattern="all_songs"))
 app.add_handler(CallbackQueryHandler(download_callback, pattern="^dl_"))
 app.add_handler(MessageHandler(filters.VOICE, handle_voice))
-app.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, handle_video))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
-app.run_polling()
+app.add_handler(MessageHandler(filters.VIDEO | filte
