@@ -49,8 +49,16 @@ def get_song_info(song_data):
     if track:
         title = track.get("title", "نامشخص")
         artist = track.get("subtitle", "نامشخص")
-        return title, artist
-    return None, None
+        youtube_url = None
+        sections = track.get("sections", [])
+        for section in sections:
+            for meta in section.get("metadata", []):
+                if "YouTube" in meta.get("title", ""):
+                    youtube_url = meta.get("text")
+        if not youtube_url:
+            youtube_url = "https://www.youtube.com/results?search_query=" + title.replace(" ", "+") + "+" + artist.replace(" ", "+")
+        return title, artist, youtube_url
+    return None, None, None
 
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -71,9 +79,11 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_video(video=open("video.mp4", "rb"), reply_markup=reply_markup)
         try:
             song_data = get_song(url)
-            title, artist = get_song_info(song_data)
+            title, artist, youtube_url = get_song_info(song_data)
             if title:
-                await update.message.reply_text(f"🎵 آهنگ: {title}\n👤 خواننده: {artist}")
+                keyboard2 = [[InlineKeyboardButton("گوش بده در یوتیوب", url=youtube_url)]]
+                reply_markup2 = InlineKeyboardMarkup(keyboard2)
+                await update.message.reply_text(f"🎵 آهنگ: {title}\n👤 خواننده: {artist}", reply_markup=reply_markup2)
         except:
             pass
     except Exception as e:
