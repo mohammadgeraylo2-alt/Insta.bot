@@ -208,33 +208,21 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     msg = await update.message.reply_text("🎵 دارم آهنگ ویدیو رو شناسایی میکنم...")
 
-    video_path = f"video_{user_id}.mp4"
-    audio_path = f"audio_{user_id}.ogg"
-
     try:
         video = update.message.video or update.message.document
         file = await video.get_file()
-        await file.download_to_drive(video_path)
+        file_url = file.file_path  # لینک مستقیم فایل از تلگرام
 
-        os.system(f"ffmpeg -i {video_path} -t 15 -ar 16000 -ac 1 {audio_path} -y -loglevel quiet")
-
-        with open(audio_path, "rb") as f:
-            import base64
-            audio_b64 = base64.b64encode(f.read()).decode()
-
-        host = "shazam.p.rapidapi.com"
-        headers = {
-            "x-rapidapi-key": RAPIDAPI_KEY,
-            "x-rapidapi-host": host,
-            "Content-Type": "text/plain"
-        }
-        r = requests.post(f"https://{host}/songs/v2/detect", headers=headers, data=audio_b64)
+        host = "reels-tiktok-shorts-song-recognition-api-shazam.p.rapidapi.com"
+        api_url = f"https://{host}/recognize/social/url"
+        headers = {"x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": host}
+        r = requests.get(api_url, headers=headers, params={"url": file_url})
         data = r.json()
-        print("SHAZAM RESPONSE:", data)
+        print("RESPONSE:", data)
         track = data.get("track")
 
         if not track:
-            await msg.edit_text(f"آهنگی شناسایی نشد 😔\n\n`{str(data)[:200]}`", parse_mode="Markdown")
+            await msg.edit_text(f"آهنگی شناسایی نشد 😔\n`{str(data)[:200]}`", parse_mode="Markdown")
             return
 
         title = track.get("title", "نامشخص")
