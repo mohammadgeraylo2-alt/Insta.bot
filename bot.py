@@ -7,6 +7,7 @@ import os
 TOKEN = os.environ["BOT_TOKEN"]
 RAPIDAPI_KEY = os.environ["RAPIDAPI_KEY"]
 CHANNEL = "@downloader_hamechi"
+user_urls = {}
 
 async def is_member(bot, user_id):
     try:
@@ -44,21 +45,35 @@ def get_song(url):
     response = requests.get(api_url, headers=headers, params=params)
     return response.json()
 
-def get_song_info(song_data):
-    track = song_data.get("track")
-    if track:
-        title = track.get("title", "نامشخص")
-        artist = track.get("subtitle", "نامشخص")
-        youtube_url = None
-        sections = track.get("sections", [])
-        for section in sections:
-            for meta in section.get("metadata", []):
-                if "YouTube" in meta.get("title", ""):
-                    youtube_url = meta.get("text")
-        if not youtube_url:
-            youtube_url = "https://www.youtube.com/results?search_query=" + title.replace(" ", "+") + "+" + artist.replace(" ", "+")
-        return title, artist, youtube_url
-    return None, None, None
+async def song_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    user_id = query.from_user.id
+    await query.answer("در حال جستجوی آهنگ...")
+    url = user_urls.get(user_id)
+    if not url:
+        await query.message.reply_text("لینک پیدا نشد، دوباره ویدیو رو بفرست.")
+        return
+    try:
+        song_data = get_song(url)
+        track = song_data.get("track")
+        if track:
+            title = track.get("title", "نامشخص")
+            artist = track.get("subtitle", "نامشخص")
+            spotify_url = None
+            hub = track.get("hub", {})
+            for option in hub.get("options", []):
+                if "spotify" in option.get("caption", "").lower():
+                    actions = option.get("actions", [])
+                    for action in actions:
+                        if action.get("uri", "").startswith("spotify"):
+                            spotify_url = action.get("uri")
+            await query.message.reply_text(f"🎵 آهنگ: {title}\n👤 خواننده: {artist}")
+            if spotify_url:
+                await query.message.reply_text(f"لینک اسپاتیفای: {spotify_url}")
+        else:
+            await query.message.reply_text("آهنگی پیدا نشد 😔")
+    except Exception as e:
+        await query.message.reply_text("آهنگی پیدا نشد 😔")
 
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -74,18 +89,13 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
-        keyboard = [[InlineKeyboardButton("کانال ما", url="https://t.me/downloader_hamechi")]]
+        user_urls[user_id] = url
+        keyboard = [
+            [InlineKeyboardButton("کانال ما 📢", url="https://t.me/downloader_hamechi")],
+            [InlineKeyboardButton("🎵 دریافت آهنگ", callback_data="get_song")]
+        ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_video(video=open("video.mp4", "rb"), reply_markup=reply_markup)
-        try:
-            song_data = get_song(url)
-            title, artist, youtube_url = get_song_info(song_data)
-            if title:
-                keyboard2 = [[InlineKeyboardButton("گوش بده در یوتیوب", url=youtube_url)]]
-                reply_markup2 = InlineKeyboardMarkup(keyboard2)
-                await update.message.reply_text(f"🎵 آهنگ: {title}\n👤 خواننده: {artist}", reply_markup=reply_markup2)
-        except:
-            pass
     except Exception as e:
         await update.message.reply_text(f"خطا: {e}")
     finally:
@@ -95,5 +105,6 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CallbackQueryHandler(check_join_callback, pattern="check_join"))
+app.add_handler(CallbackQueryHandler(song_callback, pattern="get_song"))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
 app.run_polling()
