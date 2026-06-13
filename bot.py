@@ -49,7 +49,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "*سلام! 👋*\n\n"
         "*لینک اینستاگرام بفرست* برای دانلود ویدیو\n"
         "*اسم آهنگ بنویس* برای سرچ و دانلود\n"
-        "*ویس بفرست* برای شناسایی آهنگ",
+        "*ویس بفرست* برای شناسایی آهنگ\n"
+        "*ویدیو فوروارد کن* برای دریافت آهنگش",
         parse_mode="Markdown"
     )
 
@@ -106,13 +107,11 @@ def search_songs(query):
         )
         tracks = r.json().get("data", [])
 
-        # پیدا کردن آرتیستی که اسمش بیشترین شباهت به query داره
         artist_scores = {}
         for track in tracks:
             a_id = track.get("artist", {}).get("id")
             a_name = track.get("artist", {}).get("name", "")
             if a_id and a_id not in artist_scores:
-                # مقایسه مستقیم اسم آرتیست با query
                 score = fuzzy_score(query, a_name)
                 artist_scores[a_id] = {"name": a_name, "score": score}
 
@@ -138,7 +137,7 @@ def search_songs(query):
         pass
 
     results.sort(key=lambda x: x["score"], reverse=True)
-    return results[:5], top_artist_id, top_artist_name
+    return results[:10], top_artist_id, top_artist_name
 
 def get_artist_tracks(artist_id):
     try:
@@ -202,6 +201,50 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     finally:
         if os.path.exists(f"voice_{user_id}.ogg"):
             os.remove(f"voice_{user_id}.ogg")
+
+async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    if not await is_member(context.bot, user_id):
+        await not_joined_message(update)
+        return
+
+    msg = await update.message.reply_text("🎵 دارم آهنگ ویدیو رو شناسایی میکنم...")
+
+    try:
+        video = update.message.video or update.message.document
+        file = await video.get_file()
+        video_path = f"video_{user_id}.mp4"
+        await file.download_to_drive(video_path)
+
+        with open(video_path, "rb") as f:
+            import base64
+            audio_b64 = base64.b64encode(f.read()).decode()
+
+        host = "shazam.p.rapidapi.com"
+        headers = {
+            "x-rapidapi-key": RAPIDAPI_KEY,
+            "x-rapidapi-host": host,
+            "Content-Type": "text/plain"
+        }
+        r = requests.post(f"https://{host}/songs/v2/detect", headers=headers, data=audio_b64)
+        data = r.json()
+        track = data.get("track")
+
+        if not track:
+            await msg.edit_text("آهنگی شناسایی نشد 😔")
+            return
+
+        title = track.get("title", "نامشخص")
+        artist = track.get("subtitle", "نامشخص")
+
+        await msg.edit_text(f"🎵 *{title}*\n👤 *{artist}*\n⬇️ دارم دانلود میکنم...", parse_mode="Markdown")
+        await download_and_send(update, context, title, artist, msg)
+
+    except Exception as e:
+        await msg.edit_text(f"❌ خطا: {e}")
+    finally:
+        if os.path.exists(f"video_{user_id}.mp4"):
+            os.remove(f"video_{user_id}.mp4")
 
 async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -445,5 +488,6 @@ app.add_handler(CallbackQueryHandler(song_callback, pattern="get_song"))
 app.add_handler(CallbackQueryHandler(all_songs_callback, pattern="all_songs"))
 app.add_handler(CallbackQueryHandler(download_callback, pattern="^dl_"))
 app.add_handler(MessageHandler(filters.VOICE, handle_voice))
+app.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, handle_video))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
 app.run_polling()
