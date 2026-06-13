@@ -573,35 +573,6 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     os.remove(f"video_{user_id}.mp4")
 
     else:
-        msg = await update.message.reply_text("دارم سرچ میکنم...")
-        try:
-            results, artist_id, artist_name = search_songs(text)
-            if not results:
-                await msg.edit_text("نتیجهای پیدا نشد")
-                return
-
-            user_search_results[user_id] = results
-
-            if artist_id:
-                user_artist_data[user_id] = {"id": artist_id, "name": artist_name}
-
-            keyboard = [
-                    [InlineKeyboardButton("کانال ما", url="https://t.me/downloader_hamechi")],
-                    [InlineKeyboardButton("دریافت آهنگ", callback_data="get_song")]
-            
-                user_urls[user_id] = text
-                await update.message.reply_video(
-                    video=open(path, "rb"),
-                    reply_markup=InlineKeyboardMarkup(keyboard)
-                )
-                await msg.delete()
-                if os.path.exists(path):
-                    os.remove(path)
-
-            except Exception as e:
-                await msg.edit_text(f"خطا: {e}")
-
-        else:
             await update.message.reply_text("در حال دانلود...")
             ydl_opts = {
                 "outtmpl": f"video_{user_id}.mp4",
@@ -639,6 +610,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             if artist_id:
                 user_artist_data[user_id] = {"id": artist_id, "name": artist_name}
+
             keyboard = []
             for i, track in enumerate(results):
                 title = track.get("title", "نامشخص")[:28]
