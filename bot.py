@@ -52,26 +52,26 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
-def search_songs(query):
-    # سرچ در SoundCloud با کیفیت بهتر
-    ydl_opts = {
-        "quiet": True,
-        "extract_flat": True,
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        result = ydl.extract_info(f"scsearch10:{query}", download=False)
-        if not result:
-            return []
-        entries = result.get("entries", [])
-
-        # فیلتر کن: فقط آهنگ‌هایی که عنوانشون شبیه query هست بالا بیان
-        query_words = query.lower().split()
-        def score(track):
-            title = track.get("title", "").lower()
-            return sum(1 for w in query_words if w in title)
-
-        entries_sorted = sorted(entries, key=score, reverse=True)
-        return entries_sorted[:5]
+def search_deezer(query):
+    try:
+        r = requests.get(
+            "https://api.deezer.com/search",
+            params={"q": query, "limit": 8},
+            timeout=10
+        )
+        data = r.json()
+        tracks = data.get("data", [])
+        results = []
+        for track in tracks:
+            results.append({
+                "title": track.get("title", "نامشخص"),
+                "artist": track.get("artist", {}).get("name", "نامشخص"),
+                "duration": track.get("duration", 0),
+            })
+        return results
+    except Exception as e:
+        print(f"Deezer error: {e}")
+        return []
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -134,13 +134,10 @@ async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     track = results[index]
     title = track.get("title", "نامشخص")
-    url = track.get("url") or track.get("webpage_url", "")
+    artist = track.get("artist", "")
+    search_query = f"{title} {artist}"
 
-    if not url:
-        await query.message.reply_text("❌ لینک پیدا نشد، دوباره سرچ کن.")
-        return
-
-    msg = await query.message.reply_text(f"⬇️ دارم دانلود میکنم...\n🎵 {title}")
+    msg = await query.message.reply_text(f"⬇️ دارم دانلود میکنم...\n🎵 {title} - {artist}")
 
     try:
         mp3_path = f"song_{user_id}.mp3"
@@ -151,11 +148,12 @@ async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "quiet": True
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            ydl.download([f"scsearch1:{search_query}"])
 
         await query.message.reply_audio(
             audio=open(mp3_path, "rb"),
-            title=title
+            title=title,
+            performer=artist
         )
         await msg.delete()
 
@@ -283,20 +281,21 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         msg = await update.message.reply_text("🔍 دارم سرچ میکنم...")
         try:
-            results = search_songs(text)
+            results = search_deezer(text)
             if not results:
                 await msg.edit_text("نتیجه‌ای پیدا نشد 😔")
                 return
 
             user_search_results[user_id] = results
             keyboard = []
-            for i, track in enumerate(results[:5]):
-                title = track.get("title", "نامشخص")[:35]
+            for i, track in enumerate(results[:8]):
+                title = track.get("title", "نامشخص")[:30]
+                artist = track.get("artist", "")[:15]
                 duration = track.get("duration", 0)
                 mins = int(duration) // 60 if duration else 0
                 secs = int(duration) % 60 if duration else 0
                 keyboard.append([InlineKeyboardButton(
-                    f"🎵 {title} ({mins}:{secs:02d})",
+                    f"🎵 {title} - {artist} ({mins}:{secs:02d})",
                     callback_data=f"dl_{i}"
                 )])
 
@@ -316,3 +315,4 @@ app.add_handler(CallbackQueryHandler(download_callback, pattern="^dl_"))
 app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
 app.run_polling()
+        
