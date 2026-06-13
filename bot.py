@@ -274,9 +274,7 @@ async def download_and_send(update, context, title, artist, msg):
     await msg.delete()
 
     if os.path.exists(mp3_path):
-        os.remove(mp3_path)
-
-async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        os.remove(mp3_path)async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
     await query.answer("در حال دانلود...")
@@ -408,14 +406,18 @@ async def song_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 with open(video_path, "wb") as f:
                     f.write(video_data)
         else:
-            ydl_opts = {
-                "outtmpl": f"detect_{user_id}.%(ext)s",
-                "format": "best[ext=mp4]/best",
-                "noplaylist": True,
-                "quiet": True
-            }
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
+            existing = f"video_{user_id}.mp4"
+            if os.path.exists(existing):
+                video_path = existing
+            else:
+                ydl_opts = {
+                    "outtmpl": f"detect_{user_id}.%(ext)s",
+                    "format": "best[ext=mp4]/best",
+                    "noplaylist": True,
+                    "quiet": True
+                }
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([url])
 
         with open(video_path, "rb") as f:
             audio_b64 = base64.b64encode(f.read()).decode()
@@ -477,7 +479,7 @@ async def song_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await msg.edit_text(f"خطا: {e}")
     finally:
-        for path in [f"detect_{user_id}.mp4", f"song_{user_id}.mp3"]:
+        for path in [f"detect_{user_id}.mp4", f"video_{user_id}.mp4", f"song_{user_id}.mp3"]:
             if os.path.exists(path):
                 os.remove(path)
 
@@ -569,15 +571,14 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as e:
                 await update.message.reply_text(f"خطا: {e}")
             finally:
-                if os.path.exists(f"video_{user_id}.mp4"):
-                    os.remove(f"video_{user_id}.mp4")
+                pass  # فایل نگه میداریم برای شناسایی آهنگ
 
     else:
         msg = await update.message.reply_text("دارم سرچ میکنم...")
         try:
             results, artist_id, artist_name = search_songs(text)
             if not results:
-                await msg.edit_text("نتیجهای پیدا نشد")
+                await msg.edit_text("نتیجه‌ای پیدا نشد")
                 return
 
             user_search_results[user_id] = results
@@ -607,7 +608,6 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         except Exception as e:
             await msg.edit_text(f"خطا: {e}")
-
 
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
