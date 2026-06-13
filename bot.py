@@ -93,7 +93,7 @@ async def song_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.delete()
 
     except Exception as e:
-        await msg.edit_text("❌ دانلود آهنگ ناموفق بود.")
+        await msg.edit_text(f"❌ خطا: {e}")
 
     finally:
         mp3_path = f"song_{user_id}.mp3"
