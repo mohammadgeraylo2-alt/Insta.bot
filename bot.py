@@ -21,7 +21,12 @@ async def not_joined_message(update):
         [InlineKeyboardButton("عضویت در کانال", url="https://t.me/downloader_hamechi")],
         [InlineKeyboardButton("عضو شدم", callback_data="check_join")]
     ]
-    await update.message.reply_text("عضو کانال بشی تا ربات کار کنه", reply_markup=InlineKeyboardMarkup(keyboard))
+    await update.message.reply_text(
+    "👋 سلام!\n\n"
+    "برای استفاده از ربات، اول باید عضو کانال ما بشی 🙏\n\n"
+    "📢 بعد از عضویت روی دکمه «عضو شدم» بزن",
+    reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
 async def check_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
