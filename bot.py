@@ -9,7 +9,7 @@ RAPIDAPI_KEY = os.environ["RAPIDAPI_KEY"]
 CHANNEL = "@downloader_hamechi"
 user_urls = {}
 user_search_results = {}
-user_artist_data = {}  # ذخیره اطلاعات آرتیست برای "همه آهنگ‌ها"
+user_artist_data = {}
 
 async def is_member(bot, user_id):
     try:
@@ -105,10 +105,21 @@ def search_songs(query):
             timeout=8
         )
         tracks = r.json().get("data", [])
-        if tracks:
-            # آرتیست اول رو برای "همه آهنگ‌ها" ذخیره کن
-            top_artist_id = tracks[0].get("artist", {}).get("id")
-            top_artist_name = tracks[0].get("artist", {}).get("name")
+
+        # پیدا کردن آرتیست با بیشترین تکرار در نتایج
+        artist_counter = {}
+        for track in tracks:
+            a_id = track.get("artist", {}).get("id")
+            a_name = track.get("artist", {}).get("name", "")
+            if a_id:
+                if a_id not in artist_counter:
+                    artist_counter[a_id] = {"count": 0, "name": a_name}
+                artist_counter[a_id]["count"] += 1
+
+        if artist_counter:
+            best_artist_id = max(artist_counter, key=lambda x: artist_counter[x]["count"])
+            top_artist_id = best_artist_id
+            top_artist_name = artist_counter[best_artist_id]["name"]
 
         for track in tracks:
             title = track.get("title", "")
@@ -401,7 +412,6 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             user_search_results[user_id] = results
 
-            # ذخیره آرتیست برای دکمه "همه آهنگ‌ها"
             if artist_id:
                 user_artist_data[user_id] = {"id": artist_id, "name": artist_name}
 
@@ -414,7 +424,6 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     callback_data=f"dl_{i}"
                 )])
 
-            # دکمه همه آهنگ‌ها
             if artist_id and artist_name:
                 keyboard.append([InlineKeyboardButton(
                     f"🎤 همه آهنگ‌های {artist_name}",
@@ -438,4 +447,3 @@ app.add_handler(CallbackQueryHandler(download_callback, pattern="^dl_"))
 app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
 app.run_polling()
-
