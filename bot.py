@@ -46,12 +46,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await not_joined_message(update)
         return
     await update.message.reply_text(
-        "*سلام! 👋*\n\n"
-        "*لینک اینستاگرام بفرست یا:*\n"
-        "*/search اسم آهنگ یا خواننده* برای سرچ\n"
-        "*ویس بفرست* برای شناسایی آهنگ",
-        parse_mode="Markdown"
-    )
+    "*سلام! 👋*\n\n"
+    "*لینک اینستاگرام بفرست* برای دانلود ویدیو\n"
+    "*اسم آهنگ بنویس* برای سرچ و دانلود\n"
+    "*ویس بفرست* برای شناسایی آهنگ",
+    parse_mode="Markdown"
+    ),
 
 def search_soundcloud(query):
     ydl_opts = {
