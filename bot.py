@@ -275,8 +275,8 @@ async def download_and_send(update, context, title, artist, msg):
 
     if os.path.exists(mp3_path):
         os.remove(mp3_path)
-        
-        async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    
+    async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
     await query.answer("در حال دانلود...")
