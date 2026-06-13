@@ -22,12 +22,12 @@ async def not_joined_message(update):
         [InlineKeyboardButton("عضو شدم", callback_data="check_join")]
     ]
     await update.message.reply_text(
-    "👋 سلام!\n\n"
+    "*👋 سلام!*\n\n"
     "برای استفاده از ربات، اول باید عضو کانال ما بشی 🙏\n\n"
     "📢 بعد از عضویت روی دکمه «عضو شدم» بزن",
+    parse_mode="Markdown",
     reply_markup=InlineKeyboardMarkup(keyboard)
     )
-
 async def check_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
