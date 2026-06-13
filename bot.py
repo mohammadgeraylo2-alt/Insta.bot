@@ -12,12 +12,14 @@ user_urls = {}
 user_search_results = {}
 user_artist_data = {}
 
+
 async def is_member(bot, user_id):
     try:
         member = await bot.get_chat_member(CHANNEL, user_id)
         return member.status in ["member", "administrator", "creator"]
     except:
         return False
+
 
 async def not_joined_message(update):
     keyboard = [
@@ -32,6 +34,7 @@ async def not_joined_message(update):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
+
 async def check_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
@@ -40,6 +43,7 @@ async def check_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         await query.message.reply_text("سلام! لینک اینستاگرام بفرست یا اسم آهنگ بنویس")
     else:
         await query.answer("هنوز عضو نشدی", show_alert=True)
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -55,6 +59,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "*ویدیو فوروارد کن* برای دریافت آهنگش",
         parse_mode="Markdown"
     )
+
 
 def fuzzy_score(query, title):
     q = query.lower()
@@ -73,6 +78,7 @@ def fuzzy_score(query, title):
     char_overlap = len(q_chars & t_chars) / max(len(q_chars), len(t_chars), 1)
     score += int(char_overlap * 30)
     return score
+
 
 def search_songs(query):
     results = []
@@ -139,6 +145,7 @@ def search_songs(query):
     results.sort(key=lambda x: x["score"], reverse=True)
     return results[:10], top_artist_id, top_artist_name
 
+
 def get_artist_tracks(artist_id):
     try:
         r = requests.get(
@@ -159,13 +166,14 @@ def get_artist_tracks(artist_id):
     except:
         return []
 
+
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     if not await is_member(context.bot, user_id):
         await not_joined_message(update)
         return
 
-    msg = await update.message.reply_text("داری آهنگ رو شناسایی میکنم...")
+    msg = await update.message.reply_text("دارم آهنگ رو شناسایی میکنم...")
 
     try:
         voice = await update.message.voice.get_file()
@@ -201,6 +209,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if os.path.exists(f"voice_{user_id}.ogg"):
             os.remove(f"voice_{user_id}.ogg")
 
+
 async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     if not await is_member(context.bot, user_id):
@@ -233,6 +242,7 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await msg.edit_text(f"خطا: {e}")
+
 
 async def download_and_send(update, context, title, artist, msg):
     user_id = update.message.from_user.id
@@ -275,8 +285,9 @@ async def download_and_send(update, context, title, artist, msg):
 
     if os.path.exists(mp3_path):
         os.remove(mp3_path)
-    
-    async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+
+async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
     await query.answer("در حال دانلود...")
@@ -340,6 +351,7 @@ async def download_and_send(update, context, title, artist, msg):
         if os.path.exists(mp3_path):
             os.remove(mp3_path)
 
+
 async def all_songs_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
@@ -377,6 +389,7 @@ async def all_songs_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 async def song_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -485,6 +498,7 @@ async def song_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if os.path.exists(path):
                 os.remove(path)
 
+
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     if not await is_member(context.bot, user_id):
@@ -573,7 +587,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as e:
                 await update.message.reply_text(f"خطا: {e}")
             finally:
-                pass  # فایل نگه میداریم برای شناسایی آهنگ
+                pass
 
     else:
         msg = await update.message.reply_text("دارم سرچ میکنم...")
@@ -611,6 +625,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             await msg.edit_text(f"خطا: {e}")
 
+
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CallbackQueryHandler(check_join_callback, pattern="check_join"))
@@ -621,3 +636,4 @@ app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 app.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, handle_video))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
 app.run_polling()
+ 
