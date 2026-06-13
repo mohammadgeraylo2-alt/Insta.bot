@@ -55,6 +55,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "outtmpl": "video.mp4",
         "format": "best[ext=mp4]/best",
         "noplaylist": True,
+        "extractor_args": {"youtube": {"player_client": ["android"]}},
     }
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
