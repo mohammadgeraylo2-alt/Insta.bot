@@ -78,7 +78,6 @@ def search_songs(query):
     top_artist_id = None
     top_artist_name = None
 
-    # سرچ SoundCloud
     ydl_opts = {"quiet": True, "extract_flat": True}
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -98,7 +97,6 @@ def search_songs(query):
     except:
         pass
 
-    # سرچ Deezer
     try:
         r = requests.get(
             "https://api.deezer.com/search",
@@ -210,13 +208,17 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     msg = await update.message.reply_text("🎵 دارم آهنگ ویدیو رو شناسایی میکنم...")
 
+    video_path = f"video_{user_id}.mp4"
+    audio_path = f"audio_{user_id}.ogg"
+
     try:
         video = update.message.video or update.message.document
         file = await video.get_file()
-        video_path = f"video_{user_id}.mp4"
         await file.download_to_drive(video_path)
 
-        with open(video_path, "rb") as f:
+        os.system(f"ffmpeg -i {video_path} -t 15 -ar 16000 -ac 1 {audio_path} -y -loglevel quiet")
+
+        with open(audio_path, "rb") as f:
             import base64
             audio_b64 = base64.b64encode(f.read()).decode()
 
@@ -243,8 +245,10 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await msg.edit_text(f"❌ خطا: {e}")
     finally:
-        if os.path.exists(f"video_{user_id}.mp4"):
-            os.remove(f"video_{user_id}.mp4")
+        if os.path.exists(video_path):
+            os.remove(video_path)
+        if os.path.exists(audio_path):
+            os.remove(audio_path)
 
 async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
