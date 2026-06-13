@@ -52,26 +52,98 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
-def search_deezer(query):
+def normalize(text):
+    """حروف شبیه به هم رو یکی میکنه تا سرچ دقیق‌تر باشه"""
+    replacements = {
+        'ک': 'k', 'ی': 'i', 'ا': 'a', 'و': 'o', 'ه': 'h',
+        'ن': 'n', 'م': 'm', 'ر': 'r', 'ت': 't', 'س': 's',
+        'ع': 'a', 'ح': 'h', 'ق': 'gh', 'خ': 'kh', 'ش': 'sh',
+        'ز': 'z', 'ژ': 'zh', 'چ': 'ch', 'پ': 'p', 'ب': 'b',
+        'گ': 'g', 'ف': 'f', 'ل': 'l', 'د': 'd', 'ج': 'j',
+    }
+    result = text.lower()
+    for fa, en in replacements.items():
+        result = result.replace(fa, en)
+    return result
+
+def fuzzy_score(query, title):
+    """امتیاز شباهت بین query و title"""
+    q = query.lower()
+    t = title.lower()
+    score = 0
+
+    # اگه عین هم بود
+    if q == t:
+        return 100
+
+    # اگه title با query شروع میشه
+    if t.startswith(q) or q.startswith(t):
+        score += 50
+
+    # تعداد کلمات مشترک
+    q_words = set(q.split())
+    t_words = set(t.split())
+    common = q_words & t_words
+    score += len(common) * 20
+
+    # شباهت کاراکتری (برای غلط‌های تایپی مثل vinak vs vinaak)
+    q_chars = set(q.replace(" ", ""))
+    t_chars = set(t.replace(" ", ""))
+    char_overlap = len(q_chars & t_chars) / max(len(q_chars), len(t_chars), 1)
+    score += int(char_overlap * 30)
+
+    return score
+
+def search_songs(query):
+    results = []
+    seen_titles = set()
+
+    # ۱. سرچ در SoundCloud
+    ydl_opts = {"quiet": True, "extract_flat": True}
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            result = ydl.extract_info(f"scsearch10:{query}", download=False)
+            for entry in result.get("entries", []):
+                title = entry.get("title", "")
+                key = title.lower().strip()
+                if key not in seen_titles:
+                    seen_titles.add(key)
+                    results.append({
+                        "title": title,
+                        "artist": entry.get("uploader", ""),
+                        "duration": entry.get("duration", 0),
+                        "url": entry.get("url") or entry.get("webpage_url", ""),
+                        "score": fuzzy_score(query, title)
+                    })
+    except:
+        pass
+
+    # ۲. سرچ در Deezer
     try:
         r = requests.get(
             "https://api.deezer.com/search",
-            params={"q": query, "limit": 8},
-            timeout=10
+            params={"q": query, "limit": 10},
+            timeout=8
         )
-        data = r.json()
-        tracks = data.get("data", [])
-        results = []
-        for track in tracks:
-            results.append({
-                "title": track.get("title", "نامشخص"),
-                "artist": track.get("artist", {}).get("name", "نامشخص"),
-                "duration": track.get("duration", 0),
-            })
-        return results
-    except Exception as e:
-        print(f"Deezer error: {e}")
-        return []
+        for track in r.json().get("data", []):
+            title = track.get("title", "")
+            artist = track.get("artist", {}).get("name", "")
+            key = f"{title} {artist}".lower().strip()
+            if key not in seen_titles:
+                seen_titles.add(key)
+                results.append({
+                    "title": title,
+                    "artist": artist,
+                    "duration": track.get("duration", 0),
+                    "url": None,  # بعداً از SoundCloud دانلود میشه
+                    "score": fuzzy_score(query, f"{title} {artist}")
+                })
+    except:
+        pass
+
+    # مرتب‌سازی بر اساس امتیاز
+    results.sort(key=lambda x: x["score"], reverse=True)
+    return results[:8]
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -135,7 +207,7 @@ async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     track = results[index]
     title = track.get("title", "نامشخص")
     artist = track.get("artist", "")
-    search_query = f"{title} {artist}"
+    url = track.get("url")
 
     msg = await query.message.reply_text(f"⬇️ دارم دانلود میکنم...\n🎵 {title} - {artist}")
 
@@ -148,7 +220,11 @@ async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "quiet": True
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([f"scsearch1:{search_query}"])
+            # اگه URL مستقیم داشت ازش استفاده کن، وگرنه سرچ کن
+            if url:
+                ydl.download([url])
+            else:
+                ydl.download([f"scsearch1:{title} {artist}"])
 
         await query.message.reply_audio(
             audio=open(mp3_path, "rb"),
@@ -281,15 +357,15 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         msg = await update.message.reply_text("🔍 دارم سرچ میکنم...")
         try:
-            results = search_deezer(text)
+            results = search_songs(text)
             if not results:
                 await msg.edit_text("نتیجه‌ای پیدا نشد 😔")
                 return
 
             user_search_results[user_id] = results
             keyboard = []
-            for i, track in enumerate(results[:8]):
-                title = track.get("title", "نامشخص")[:30]
+            for i, track in enumerate(results):
+                title = track.get("title", "نامشخص")[:28]
                 artist = track.get("artist", "")[:15]
                 duration = track.get("duration", 0)
                 mins = int(duration) // 60 if duration else 0
@@ -315,4 +391,3 @@ app.add_handler(CallbackQueryHandler(download_callback, pattern="^dl_"))
 app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
 app.run_polling()
-        
