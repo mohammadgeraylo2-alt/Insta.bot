@@ -52,49 +52,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
-def search_soundcloud(query):
+def search_songs(query):
     ydl_opts = {
         "quiet": True,
         "extract_flat": True,
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        result = ydl.extract_info(f"scsearch5:{query}", download=False)
+        result = ydl.extract_info(f"ytsearch5:{query} official audio", download=False)
         if not result:
             return []
         return result.get("entries", [])
-
-async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    if not await is_member(context.bot, user_id):
-        await not_joined_message(update)
-        return
-
-    query = " ".join(context.args)
-    if not query:
-        await update.message.reply_text("*مثال: /search Eminem Lose Yourself*", parse_mode="Markdown")
-        return
-
-    msg = await update.message.reply_text("🔍 دارم سرچ میکنم...")
-
-    try:
-        results = search_soundcloud(query)
-        if not results:
-            await msg.edit_text("نتیجه‌ای پیدا نشد 😔")
-            return
-
-        user_search_results[user_id] = results
-        keyboard = []
-        for i, track in enumerate(results[:5]):
-            title = track.get("title", "نامشخص")[:40]
-            keyboard.append([InlineKeyboardButton(f"🎵 {title}", callback_data=f"dl_{i}")])
-
-        await msg.edit_text(
-            "*نتایج سرچ:*",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-    except Exception as e:
-        await msg.edit_text(f"❌ خطا: {e}")
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -185,12 +152,12 @@ async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await msg.edit_text(f"❌ خطا: {e}")
     finally:
-        if os.path.exists(f"song_{user_id}.mp3"):
-            os.remove(f"song_{user_id}.mp3")
+        if os.path.exists(mp3_path):
+            os.remove(mp3_path)
 
 async def download_and_send(update, context, title, artist, msg):
     user_id = update.message.from_user.id
-    search_query = f"scsearch1:{title} {artist}"
+    search_query = f"ytsearch1:{title} {artist} official audio"
     mp3_path = f"song_{user_id}.mp3"
 
     ydl_opts = {
@@ -245,7 +212,7 @@ async def song_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await msg.edit_text(f"🎵 {title} - {artist}\n⬇️ دارم دانلود میکنم...")
 
-        search_query = f"scsearch1:{title} {artist}"
+        search_query = f"ytsearch1:{title} {artist} official audio"
         mp3_path = f"song_{user_id}.mp3"
 
         ydl_opts = {
@@ -311,7 +278,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         msg = await update.message.reply_text("🔍 دارم سرچ میکنم...")
         try:
-            results = search_soundcloud(text)
+            results = search_songs(text)
             if not results:
                 await msg.edit_text("نتیجه‌ای پیدا نشد 😔")
                 return
@@ -319,8 +286,14 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_search_results[user_id] = results
             keyboard = []
             for i, track in enumerate(results[:5]):
-                title = track.get("title", "نامشخص")[:40]
-                keyboard.append([InlineKeyboardButton(f"🎵 {title}", callback_data=f"dl_{i}")])
+                title = track.get("title", "نامشخص")[:35]
+                duration = track.get("duration", 0)
+                mins = int(duration) // 60 if duration else 0
+                secs = int(duration) % 60 if duration else 0
+                keyboard.append([InlineKeyboardButton(
+                    f"🎵 {title} ({mins}:{secs:02d})",
+                    callback_data=f"dl_{i}"
+                )])
 
             await msg.edit_text(
                 "🎵 *نتایج سرچ:*",
@@ -332,7 +305,6 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("search", search_command))
 app.add_handler(CallbackQueryHandler(check_join_callback, pattern="check_join"))
 app.add_handler(CallbackQueryHandler(song_callback, pattern="get_song"))
 app.add_handler(CallbackQueryHandler(download_callback, pattern="^dl_"))
