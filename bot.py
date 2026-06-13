@@ -588,7 +588,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = [
                     [InlineKeyboardButton("کانال ما", url="https://t.me/downloader_hamechi")],
                     [InlineKeyboardButton("دریافت آهنگ", callback_data="get_song")]
-                ]
+            
                 user_urls[user_id] = text
                 await update.message.reply_video(
                     video=open(path, "rb"),
