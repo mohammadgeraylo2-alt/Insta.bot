@@ -587,4 +587,10 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CallbackQueryHandler(check_join_callback, pattern="check_join"))
-app.add_handler(CallbackQueryHandler(song_callback, patt
+app.add_handler(CallbackQueryHandler(song_callback, pattern="get_song"))
+app.add_handler(CallbackQueryHandler(all_songs_callback, pattern="all_songs"))
+app.add_handler(CallbackQueryHandler(download_callback, pattern="^dl_"))
+app.add_handler(MessageHandler(filters.VOICE, handle_voice))
+app.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, handle_video))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
+app.run_polling()
