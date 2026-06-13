@@ -48,7 +48,9 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
-        await update.message.reply_video(video=open("video.mp4", "rb"))
+        keyboard = [[InlineKeyboardButton("کانال ما 📢", url="https://t.me/downloader_hamechi")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_video(video=open("video.mp4", "rb"), reply_markup=reply_markup)
     except Exception as e:
         await update.message.reply_text(f"خطا: {e}")
     finally:
