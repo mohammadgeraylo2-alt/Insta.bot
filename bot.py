@@ -42,7 +42,7 @@ async def get_song(url):
         "x-rapidapi-host": "reels-tiktok-shorts-song-recognition-api-shazam.p.rapidapi.com"
     }
     params = {"url": url}
-    response = requests.get("https://reels-tiktok-shorts-song-recognition-api-shazam.p.rapidapi.com/recognize/social", headers=headers, params=params)
+    response = requests.get("https://reels-tiktok-shorts-song-recognition-api-shazam.p.rapidapi.com/recognize/social/url", headers=headers, params=params)", headers=headers, params=params)
     return response.json()
 
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
