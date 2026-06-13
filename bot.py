@@ -573,32 +573,6 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     os.remove(f"video_{user_id}.mp4")
 
     else:
-            await update.message.reply_text("در حال دانلود...")
-            ydl_opts = {
-                "outtmpl": f"video_{user_id}.mp4",
-                "format": "best[ext=mp4]/best",
-                "noplaylist": True
-            }
-            try:
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    ydl.download([text])
-
-                user_urls[user_id] = text
-                keyboard = [
-                    [InlineKeyboardButton("کانال ما", url="https://t.me/downloader_hamechi")],
-                    [InlineKeyboardButton("دریافت آهنگ", callback_data="get_song")]
-                ]
-                await update.message.reply_video(
-                    video=open(f"video_{user_id}.mp4", "rb"),
-                    reply_markup=InlineKeyboardMarkup(keyboard)
-                )
-            except Exception as e:
-                await update.message.reply_text(f"خطا: {e}")
-            finally:
-                if os.path.exists(f"video_{user_id}.mp4"):
-                    os.remove(f"video_{user_id}.mp4")
-
-    else:
         msg = await update.message.reply_text("دارم سرچ میکنم...")
         try:
             results, artist_id, artist_name = search_songs(text)
