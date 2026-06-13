@@ -1,6 +1,5 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, CallbackQueryHandler, filters, ContextTypes
-from instagrapi import Client
 import yt_dlp
 import requests
 import os
@@ -11,14 +10,6 @@ CHANNEL = "@downloader_hamechi"
 user_urls = {}
 user_search_results = {}
 user_artist_data = {}
-
-# لاگین اینستاگرام
-cl = Client()
-try:
-    cl.login(os.environ["IG_USERNAME"], os.environ["IG_PASSWORD"])
-    print("Instagram login successful")
-except Exception as e:
-    print(f"Instagram login failed: {e}")
 
 async def is_member(bot, user_id):
     try:
@@ -475,50 +466,58 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if "instagram.com" in text:
         if "/stories/" in text:
-            # دانلود استوری
             msg = await update.message.reply_text("⬇️ دارم استوری رو دانلود میکنم...")
             try:
-                parts = text.rstrip("/").split("/")
-                username = parts[parts.index("stories") + 1]
+                host = "instagram-downloader-download-instagram-stories-videos4.p.rapidapi.com"
+                headers = {
+                    "x-rapidapi-key": RAPIDAPI_KEY,
+                    "x-rapidapi-host": host
+                }
+                r = requests.get(
+                    f"https://{host}/convert",
+                    headers=headers,
+                    params={"url": text},
+                    timeout=15
+                )
+                data = r.json()
 
-                user_info = cl.user_info_by_username(username)
-                stories = cl.user_stories(user_info.pk)
+                video_url = None
+                if isinstance(data, list) and data:
+                    video_url = data[0].get("url") or data[0].get("video_url")
+                elif isinstance(data, dict):
+                    video_url = (
+                        data.get("url") or
+                        data.get("video_url") or
+                        data.get("media_url") or
+                        data.get("download_url")
+                    )
 
-                if not stories:
-                    await msg.edit_text("استوری‌ای پیدا نشد یا اکانت خصوصیه 😔")
+                if not video_url:
+                    await msg.edit_text(f"❌ استوری پیدا نشد\nجواب API: {data}")
                     return
+
+                video_data = requests.get(video_url, timeout=30).content
+                path = f"story_{user_id}.mp4"
+                with open(path, "wb") as f:
+                    f.write(video_data)
 
                 keyboard = [
                     [InlineKeyboardButton("کانال ما 📢", url="https://t.me/downloader_hamechi")],
                     [InlineKeyboardButton("🎵 دریافت آهنگ", callback_data="get_song")]
                 ]
-
-                for story in stories:
-                    path = cl.story_download(story.pk, folder="./")
-                    path_str = str(path)
-                    user_urls[user_id] = text
-
-                    if story.media_type == 2:  # ویدیو
-                        await update.message.reply_video(
-                            video=open(path_str, "rb"),
-                            reply_markup=InlineKeyboardMarkup(keyboard)
-                        )
-                    else:  # عکس
-                        await update.message.reply_photo(
-                            photo=open(path_str, "rb"),
-                            reply_markup=InlineKeyboardMarkup(keyboard)
-                        )
-
-                    if os.path.exists(path_str):
-                        os.remove(path_str)
-
+                user_urls[user_id] = text
+                await update.message.reply_video(
+                    video=open(path, "rb"),
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
                 await msg.delete()
+                if os.path.exists(path):
+                    os.remove(path)
 
             except Exception as e:
                 await msg.edit_text(f"❌ خطا: {e}")
 
         else:
-            # دانلود پست معمولی
             await update.message.reply_text("در حال دانلود...")
             ydl_opts = {
                 "outtmpl": f"video_{user_id}.mp4",
@@ -586,7 +585,4 @@ app.add_handler(CallbackQueryHandler(check_join_callback, pattern="check_join"))
 app.add_handler(CallbackQueryHandler(song_callback, pattern="get_song"))
 app.add_handler(CallbackQueryHandler(all_songs_callback, pattern="all_songs"))
 app.add_handler(CallbackQueryHandler(download_callback, pattern="^dl_"))
-app.add_handler(MessageHandler(filters.VOICE, handle_voice))
-app.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, handle_video))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
-app.run_polling()
+app.add_handle
