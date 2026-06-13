@@ -586,4 +586,7 @@ app.add_handler(CallbackQueryHandler(check_join_callback, pattern="check_join"))
 app.add_handler(CallbackQueryHandler(song_callback, pattern="get_song"))
 app.add_handler(CallbackQueryHandler(all_songs_callback, pattern="all_songs"))
 app.add_handler(CallbackQueryHandler(download_callback, pattern="^dl_"))
-app.add_handl
+app.add_handler(MessageHandler(filters.VOICE, handle_voice))
+app.add_handler(MessageHandler(filters.VIDEO | filters.Document.VIDEO, handle_video))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_link))
+app.run_polling()
