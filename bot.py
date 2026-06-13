@@ -3,6 +3,7 @@ from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, Cal
 import yt_dlp
 import requests
 import os
+import base64
 
 TOKEN = os.environ["BOT_TOKEN"]
 RAPIDAPI_KEY = os.environ["RAPIDAPI_KEY"]
@@ -24,9 +25,9 @@ async def not_joined_message(update):
         [InlineKeyboardButton("عضو شدم", callback_data="check_join")]
     ]
     await update.message.reply_text(
-        "*👋 سلام!*\n\n"
-        "*برای استفاده از ربات، اول باید عضو کانال ما بشی 🙏*\n\n"
-        "*📢 بعد از عضویت روی دکمه «عضو شدم» بزن*",
+        "*سلام!*\n\n"
+        "*برای استفاده از ربات، اول باید عضو کانال ما بشی*\n\n"
+        "*بعد از عضویت روی دکمه عضو شدم بزن*",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
@@ -46,7 +47,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await not_joined_message(update)
         return
     await update.message.reply_text(
-        "*سلام! 👋*\n\n"
+        "*سلام*\n\n"
         "*لینک پست اینستاگرام بفرست* برای دانلود ویدیو\n"
         "*لینک استوری اینستاگرام بفرست* برای دانلود استوری\n"
         "*اسم آهنگ بنویس* برای سرچ و دانلود\n"
@@ -164,7 +165,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await not_joined_message(update)
         return
 
-    msg = await update.message.reply_text("🎤 دارم آهنگ رو شناسایی میکنم...")
+    msg = await update.message.reply_text("داری آهنگ رو شناسایی میکنم...")
 
     try:
         voice = await update.message.voice.get_file()
@@ -172,7 +173,6 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await voice.download_to_drive(voice_path)
 
         with open(voice_path, "rb") as f:
-            import base64
             audio_b64 = base64.b64encode(f.read()).decode()
 
         host = "shazam.p.rapidapi.com"
@@ -186,17 +186,17 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         track = data.get("track")
 
         if not track:
-            await msg.edit_text("آهنگی شناسایی نشد 😔")
+            await msg.edit_text("آهنگی شناسایی نشد")
             return
 
         title = track.get("title", "نامشخص")
         artist = track.get("subtitle", "نامشخص")
 
-        await msg.edit_text(f"🎵 *{title}*\n👤 *{artist}*\n⬇️ دارم دانلود میکنم...", parse_mode="Markdown")
+        await msg.edit_text(f"*{title}*\n*{artist}*\nدارم دانلود میکنم...", parse_mode="Markdown")
         await download_and_send(update, context, title, artist, msg)
 
     except Exception as e:
-        await msg.edit_text(f"❌ خطا: {e}")
+        await msg.edit_text(f"خطا: {e}")
     finally:
         if os.path.exists(f"voice_{user_id}.ogg"):
             os.remove(f"voice_{user_id}.ogg")
@@ -207,7 +207,7 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await not_joined_message(update)
         return
 
-    msg = await update.message.reply_text("🎵 دارم آهنگ ویدیو رو شناسایی میکنم...")
+    msg = await update.message.reply_text("دارم آهنگ ویدیو رو شناسایی میکنم...")
 
     try:
         video = update.message.video or update.message.document
@@ -222,20 +222,17 @@ async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         track = data.get("track")
 
         if not track:
-            if data.get("matches") == []:
-                await msg.edit_text("آهنگی تو این ویدیو شناسایی نشد 😔\nشاید صدا واضح نباشه یا موزیک نداشته باشه.")
-            else:
-                await msg.edit_text("آهنگی شناسایی نشد 😔")
+            await msg.edit_text("آهنگی شناسایی نشد")
             return
 
         title = track.get("title", "نامشخص")
         artist = track.get("subtitle", "نامشخص")
 
-        await msg.edit_text(f"🎵 *{title}*\n👤 *{artist}*\n⬇️ دارم دانلود میکنم...", parse_mode="Markdown")
+        await msg.edit_text(f"*{title}*\n*{artist}*\nدارم دانلود میکنم...", parse_mode="Markdown")
         await download_and_send(update, context, title, artist, msg)
 
     except Exception as e:
-        await msg.edit_text(f"❌ خطا: {e}")
+        await msg.edit_text(f"خطا: {e}")
 
 async def download_and_send(update, context, title, artist, msg):
     user_id = update.message.from_user.id
@@ -266,7 +263,7 @@ async def download_and_send(update, context, title, artist, msg):
             pass
 
     if not downloaded:
-        await msg.edit_text("❌ دانلود ممکن نشد، دوباره امتحان کن.")
+        await msg.edit_text("دانلود ممکن نشد، دوباره امتحان کن.")
         return
 
     await update.message.reply_audio(
@@ -296,7 +293,7 @@ async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     artist = track.get("artist", "")
     url = track.get("url")
 
-    msg = await query.message.reply_text(f"⬇️ دارم دانلود میکنم...\n🎵 {title} - {artist}")
+    msg = await query.message.reply_text(f"دارم دانلود میکنم...\n{title} - {artist}")
 
     mp3_path = f"song_{user_id}.mp3"
     ydl_opts = {
@@ -327,7 +324,7 @@ async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
 
     if not downloaded:
-        await msg.edit_text("❌ دانلود ممکن نشد، دوباره امتحان کن.")
+        await msg.edit_text("دانلود ممکن نشد، دوباره امتحان کن.")
         return
 
     try:
@@ -338,7 +335,7 @@ async def download_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await msg.delete()
     except Exception as e:
-        await msg.edit_text(f"❌ خطا: {e}")
+        await msg.edit_text(f"خطا: {e}")
     finally:
         if os.path.exists(mp3_path):
             os.remove(mp3_path)
@@ -356,11 +353,11 @@ async def all_songs_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     artist_id = artist_data["id"]
     artist_name = artist_data["name"]
 
-    msg = await query.message.reply_text(f"🎤 دارم آهنگ‌های {artist_name} رو میگیرم...")
+    msg = await query.message.reply_text(f"دارم آهنگهای {artist_name} رو میگیرم...")
 
     tracks = get_artist_tracks(artist_id)
     if not tracks:
-        await msg.edit_text("آهنگی پیدا نشد 😔")
+        await msg.edit_text("آهنگی پیدا نشد")
         return
 
     user_search_results[user_id] = tracks
@@ -370,48 +367,76 @@ async def all_songs_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         title = track.get("title", "نامشخص")[:28]
         artist = track.get("artist", "")[:15]
         keyboard.append([InlineKeyboardButton(
-            f"🎵 {title} - {artist}",
+            f"{title} - {artist}",
             callback_data=f"dl_{i}"
         )])
 
     await msg.delete()
     await query.message.reply_text(
-        f"🎤 *همه آهنگ‌های {artist_name}:*",
+        f"*همه آهنگهای {artist_name}:*",
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
-
-def get_song(url):
-    host = "reels-tiktok-shorts-song-recognition-api-shazam.p.rapidapi.com"
-    api_url = "https://" + host + "/recognize/social/url"
-    headers = {"x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": host}
-    response = requests.get(api_url, headers=headers, params={"url": url})
-    return response.json()
 
 async def song_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
     await query.answer("در حال جستجوی آهنگ...")
 
-    url = user_urls.get(user_id)
-    if not url:
-        await query.message.reply_text("لینک پیدا نشد، دوباره ویدیو رو بفرست.")
-        return
-
-    msg = await query.message.reply_text("🔍 دارم آهنگ رو شناسایی میکنم...")
+    msg = await query.message.reply_text("دارم آهنگ رو شناسایی میکنم...")
 
     try:
-        song_data = get_song(url)
-        track = song_data.get("track")
+        url = user_urls.get(user_id)
+        if not url:
+            await msg.edit_text("لینک پیدا نشد، دوباره ویدیو رو بفرست.")
+            return
+
+        video_path = f"detect_{user_id}.mp4"
+
+        if "instagram.com" in url and "/stories/" in url:
+            host = "instagram-downloader-download-instagram-stories-videos4.p.rapidapi.com"
+            headers = {
+                "x-rapidapi-key": RAPIDAPI_KEY,
+                "x-rapidapi-host": host
+            }
+            r = requests.get(f"https://{host}/convert", headers=headers, params={"url": url}, timeout=15)
+            data = r.json()
+            media = data.get("media", [])
+            if media:
+                video_url = media[0].get("url")
+                video_data = requests.get(video_url, timeout=30).content
+                with open(video_path, "wb") as f:
+                    f.write(video_data)
+        else:
+            ydl_opts = {
+                "outtmpl": f"detect_{user_id}.%(ext)s",
+                "format": "best[ext=mp4]/best",
+                "noplaylist": True,
+                "quiet": True
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+
+        with open(video_path, "rb") as f:
+            audio_b64 = base64.b64encode(f.read()).decode()
+
+        host = "shazam.p.rapidapi.com"
+        headers = {
+            "x-rapidapi-key": RAPIDAPI_KEY,
+            "x-rapidapi-host": host,
+            "Content-Type": "text/plain"
+        }
+        r = requests.post(f"https://{host}/songs/v2/detect", headers=headers, data=audio_b64)
+        data = r.json()
+        track = data.get("track")
 
         if not track:
-            await msg.edit_text("آهنگی پیدا نشد 😔")
+            await msg.edit_text("آهنگی پیدا نشد")
             return
 
         title = track.get("title", "نامشخص")
         artist = track.get("subtitle", "نامشخص")
-
-        await msg.edit_text(f"🎵 {title} - {artist}\n⬇️ دارم دانلود میکنم...")
+        await msg.edit_text(f"{title} - {artist}\nدارم دانلود میکنم...")
 
         mp3_path = f"song_{user_id}.mp3"
         ydl_opts = {
@@ -439,7 +464,7 @@ async def song_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pass
 
         if not downloaded:
-            await msg.edit_text("❌ دانلود ممکن نشد.")
+            await msg.edit_text("دانلود ممکن نشد.")
             return
 
         await query.message.reply_audio(
@@ -450,11 +475,11 @@ async def song_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.delete()
 
     except Exception as e:
-        await msg.edit_text(f"❌ خطا: {e}")
+        await msg.edit_text(f"خطا: {e}")
     finally:
-        mp3_path = f"song_{user_id}.mp3"
-        if os.path.exists(mp3_path):
-            os.remove(mp3_path)
+        for path in [f"detect_{user_id}.mp4", f"song_{user_id}.mp3"]:
+            if os.path.exists(path):
+                os.remove(path)
 
 async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -466,7 +491,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if "instagram.com" in text:
         if "/stories/" in text:
-            msg = await update.message.reply_text("⬇️ دارم استوری رو دانلود میکنم...")
+            msg = await update.message.reply_text("دارم استوری رو دانلود میکنم...")
             try:
                 host = "instagram-downloader-download-instagram-stories-videos4.p.rapidapi.com"
                 headers = {
@@ -497,7 +522,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     video_url = data[0].get("url") or data[0].get("video_url")
 
                 if not video_url:
-                    await msg.edit_text("❌ استوری پیدا نشد 😔")
+                    await msg.edit_text("استوری پیدا نشد")
                     return
 
                 video_data = requests.get(video_url, timeout=30).content
@@ -506,8 +531,8 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f.write(video_data)
 
                 keyboard = [
-                    [InlineKeyboardButton("کانال ما 📢", url="https://t.me/downloader_hamechi")],
-                    [InlineKeyboardButton("🎵 دریافت آهنگ", callback_data="get_song")]
+                    [InlineKeyboardButton("کانال ما", url="https://t.me/downloader_hamechi")],
+                    [InlineKeyboardButton("دریافت آهنگ", callback_data="get_song")]
                 ]
                 user_urls[user_id] = text
                 await update.message.reply_video(
@@ -519,7 +544,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     os.remove(path)
 
             except Exception as e:
-                await msg.edit_text(f"❌ خطا: {e}")
+                await msg.edit_text(f"خطا: {e}")
 
         else:
             await update.message.reply_text("در حال دانلود...")
@@ -534,8 +559,8 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 user_urls[user_id] = text
                 keyboard = [
-                    [InlineKeyboardButton("کانال ما 📢", url="https://t.me/downloader_hamechi")],
-                    [InlineKeyboardButton("🎵 دریافت آهنگ", callback_data="get_song")]
+                    [InlineKeyboardButton("کانال ما", url="https://t.me/downloader_hamechi")],
+                    [InlineKeyboardButton("دریافت آهنگ", callback_data="get_song")]
                 ]
                 await update.message.reply_video(
                     video=open(f"video_{user_id}.mp4", "rb"),
@@ -548,11 +573,11 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     os.remove(f"video_{user_id}.mp4")
 
     else:
-        msg = await update.message.reply_text("🔍 دارم سرچ میکنم...")
+        msg = await update.message.reply_text("دارم سرچ میکنم...")
         try:
             results, artist_id, artist_name = search_songs(text)
             if not results:
-                await msg.edit_text("نتیجه‌ای پیدا نشد 😔")
+                await msg.edit_text("نتیجهای پیدا نشد")
                 return
 
             user_search_results[user_id] = results
@@ -560,28 +585,82 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if artist_id:
                 user_artist_data[user_id] = {"id": artist_id, "name": artist_name}
 
+            keyboard = [
+                    [InlineKeyboardButton("کانال ما", url="https://t.me/downloader_hamechi")],
+                    [InlineKeyboardButton("دریافت آهنگ", callback_data="get_song")]
+                ]
+                user_urls[user_id] = text
+                await update.message.reply_video(
+                    video=open(path, "rb"),
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+                await msg.delete()
+                if os.path.exists(path):
+                    os.remove(path)
+
+            except Exception as e:
+                await msg.edit_text(f"خطا: {e}")
+
+        else:
+            await update.message.reply_text("در حال دانلود...")
+            ydl_opts = {
+                "outtmpl": f"video_{user_id}.mp4",
+                "format": "best[ext=mp4]/best",
+                "noplaylist": True
+            }
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([text])
+
+                user_urls[user_id] = text
+                keyboard = [
+                    [InlineKeyboardButton("کانال ما", url="https://t.me/downloader_hamechi")],
+                    [InlineKeyboardButton("دریافت آهنگ", callback_data="get_song")]
+                ]
+                await update.message.reply_video(
+                    video=open(f"video_{user_id}.mp4", "rb"),
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+            except Exception as e:
+                await update.message.reply_text(f"خطا: {e}")
+            finally:
+                if os.path.exists(f"video_{user_id}.mp4"):
+                    os.remove(f"video_{user_id}.mp4")
+
+    else:
+        msg = await update.message.reply_text("دارم سرچ میکنم...")
+        try:
+            results, artist_id, artist_name = search_songs(text)
+            if not results:
+                await msg.edit_text("نتیجهای پیدا نشد")
+                return
+
+            user_search_results[user_id] = results
+
+            if artist_id:
+                user_artist_data[user_id] = {"id": artist_id, "name": artist_name}
             keyboard = []
             for i, track in enumerate(results):
                 title = track.get("title", "نامشخص")[:28]
                 artist = track.get("artist", "")[:15]
                 keyboard.append([InlineKeyboardButton(
-                    f"🎵 {title} - {artist}",
+                    f"{title} - {artist}",
                     callback_data=f"dl_{i}"
                 )])
 
             if artist_id and artist_name:
                 keyboard.append([InlineKeyboardButton(
-                    f"🎤 همه آهنگ‌های {artist_name}",
+                    f"همه آهنگهای {artist_name}",
                     callback_data="all_songs"
                 )])
 
             await msg.edit_text(
-                "🎵 *نتایج سرچ:*",
+                "*نتایج سرچ:*",
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
         except Exception as e:
-            await msg.edit_text(f"❌ خطا: {e}")
+            await msg.edit_text(f"خطا: {e}")
 
 
 app = ApplicationBuilder().token(TOKEN).build()
