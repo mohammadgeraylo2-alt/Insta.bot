@@ -482,14 +482,19 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 data = r.json()
 
                 video_url = None
-                if isinstance(data, list) and data:
-                    video_url = data[0].get("url") or data[0].get("video_url")
-                elif isinstance(data, dict):
-                    video_url = (
-                        data.get("url") or
-                        data.get("video_url") or
-                        data.get("media_url") or
-                        data.get("download_url")
+if isinstance(data, list) and data:
+    video_url = data[0].get("url") or data[0].get("video_url")
+elif isinstance(data, dict):
+    media = data.get("media", [])
+    if media:
+        video_url = media[0].get("url")
+    else:
+        video_url = (
+            data.get("url") or
+            data.get("video_url") or
+            data.get("media_url") or
+            data.get("download_url")
+        )")
                     )
 
                 if not video_url:
