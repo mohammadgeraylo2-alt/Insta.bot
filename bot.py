@@ -1,5 +1,6 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, CallbackQueryHandler, filters, ContextTypes
+import yt_dlp
 import requests
 import os
 
@@ -50,25 +51,20 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("لینک اینستاگرام یا یوتیوب بفرست.")
         return
     await update.message.reply_text("در حال دانلود...")
+    ydl_opts = {
+        "outtmpl": "video.mp4",
+        "format": "best[ext=mp4]/best",
+        "noplaylist": True,
+    }
     try:
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-        }
-        body = {"url": url}
-        response = requests.post("https://api.cobalt.tools/", headers=headers, json=body)
-        data = response.json()
-        video_url = data.get("url")
-        status = data.get("status")
-        if status == "redirect" or status == "stream":
-            await update.message.reply_video(video=video_url)
-        elif status == "picker":
-            video_url = data["picker"][0]["url"]
-            await update.message.reply_video(video=video_url)
-        else:
-            await update.message.reply_text(f"خطا: {data}")
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        await update.message.reply_video(video=open("video.mp4", "rb"))
     except Exception as e:
         await update.message.reply_text(f"خطا: {e}")
+    finally:
+        if os.path.exists("video.mp4"):
+            os.remove("video.mp4")
 
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
