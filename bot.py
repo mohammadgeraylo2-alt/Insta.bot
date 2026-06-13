@@ -3,7 +3,6 @@ from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, Cal
 import yt_dlp
 import requests
 import os
-import json
 
 TOKEN = os.environ["BOT_TOKEN"]
 RAPIDAPI_KEY = os.environ["RAPIDAPI_KEY"]
@@ -36,7 +35,7 @@ async def check_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     user_id = query.from_user.id
     if await is_member(context.bot, user_id):
         await query.answer("عضویت تایید شد")
-    
+        await query.message.reply_text("سلام! لینک اینستاگرام بفرست یا اسم آهنگ بنویس")
     else:
         await query.answer("هنوز عضو نشدی", show_alert=True)
 
@@ -46,12 +45,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await not_joined_message(update)
         return
     await update.message.reply_text(
-    "*سلام! 👋*\n\n"
-    "*لینک اینستاگرام بفرست* برای دانلود ویدیو\n"
-    "*اسم آهنگ بنویس* برای سرچ و دانلود\n"
-    "*ویس بفرست* برای شناسایی آهنگ",
-    parse_mode="Markdown"
-    ),
+        "*سلام! 👋*\n\n"
+        "*لینک اینستاگرام بفرست* برای دانلود ویدیو\n"
+        "*اسم آهنگ بنویس* برای سرچ و دانلود\n"
+        "*ویس بفرست* برای شناسایی آهنگ",
+        parse_mode="Markdown"
+    )
 
 def search_soundcloud(query):
     ydl_opts = {
@@ -84,7 +83,6 @@ async def search_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         user_search_results[user_id] = results
-
         keyboard = []
         for i, track in enumerate(results[:5]):
             title = track.get("title", "نامشخص")[:40]
@@ -137,7 +135,6 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         artist = track.get("subtitle", "نامشخص")
 
         await msg.edit_text(f"🎵 *{title}*\n👤 *{artist}*\n⬇️ دارم دانلود میکنم...", parse_mode="Markdown")
-
         await download_and_send(update, context, title, artist, msg)
 
     except Exception as e:
@@ -270,7 +267,6 @@ async def song_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await msg.edit_text(f"❌ خطا: {e}")
-
     finally:
         mp3_path = f"song_{user_id}.mp3"
         if os.path.exists(mp3_path):
@@ -282,41 +278,57 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await not_joined_message(update)
         return
 
-    url = update.message.text.strip()
-    if "instagram.com" not in url:
-        await update.message.reply_text("فقط لینک اینستاگرام بفرست یا از /search استفاده کن.")
-        return
+    text = update.message.text.strip()
 
-    await update.message.reply_text("در حال دانلود...")
+    # اگه لینک اینستاگرام بود
+    if "instagram.com" in text:
+        await update.message.reply_text("در حال دانلود...")
+        ydl_opts = {
+            "outtmpl": f"video_{user_id}.mp4",
+            "format": "best[ext=mp4]/best",
+            "noplaylist": True
+        }
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([text])
 
-    ydl_opts = {
-        "outtmpl": f"video_{user_id}.mp4",
-        "format": "best[ext=mp4]/best",
-        "noplaylist": True
-    }
+            user_urls[user_id] = text
+            keyboard = [
+                [InlineKeyboardButton("کانال ما 📢", url="https://t.me/downloader_hamechi")],
+                [InlineKeyboardButton("🎵 دریافت آهنگ", callback_data="get_song")]
+            ]
+            await update.message.reply_video(
+                video=open(f"video_{user_id}.mp4", "rb"),
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        except Exception as e:
+            await update.message.reply_text(f"خطا: {e}")
+        finally:
+            if os.path.exists(f"video_{user_id}.mp4"):
+                os.remove(f"video_{user_id}.mp4")
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+    # اگه متن معمولی بود، سرچ آهنگ
+    else:
+        msg = await update.message.reply_text("🔍 دارم سرچ میکنم...")
+        try:
+            results = search_soundcloud(text)
+            if not results:
+                await msg.edit_text("نتیجه‌ای پیدا نشد 😔")
+                return
 
-        user_urls[user_id] = url
+            user_search_results[user_id] = results
+            keyboard = []
+            for i, track in enumerate(results[:5]):
+                title = track.get("title", "نامشخص")[:40]
+                keyboard.append([InlineKeyboardButton(f"🎵 {title}", callback_data=f"dl_{i}")])
 
-        keyboard = [
-            [InlineKeyboardButton("کانال ما 📢", url="https://t.me/downloader_hamechi")],
-            [InlineKeyboardButton("🎵 دریافت آهنگ", callback_data="get_song")]
-        ]
-
-        await update.message.reply_video(
-            video=open(f"video_{user_id}.mp4", "rb"),
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-
-    except Exception as e:
-        await update.message.reply_text(f"خطا: {e}")
-
-    finally:
-        if os.path.exists(f"video_{user_id}.mp4"):
-            os.remove(f"video_{user_id}.mp4")
+            await msg.edit_text(
+                "🎵 *نتایج سرچ:*",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        except Exception as e:
+            await msg.edit_text(f"❌ خطا: {e}")
 
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
