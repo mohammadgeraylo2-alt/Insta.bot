@@ -1135,7 +1135,7 @@ async def yt_quality_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
                 "noplaylist": True,
                 "quiet": True,
                 "extractor_args": {"youtube": {"player_client": ["android","web"]}},
-                "format": f"bestvideo[height<={height}]+bestaudio/best[height<={height}]/best",
+                "format": f"bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<={height}]+bestaudio/bestvideo+bestaudio/best",
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
