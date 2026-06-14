@@ -1116,8 +1116,7 @@ async def yt_quality_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             await query.message.reply_audio(
                 audio=open(mp3_path, "rb"),
                 title=title,
-                caption=f"{caption_base}
-🎵 {title}"[:1024],
+                caption=f"{caption_base}\n🎵 {title}"[:1024],
                 reply_markup=InlineKeyboardMarkup(keyboard),
             )
             add_download(user_id, "youtube")
