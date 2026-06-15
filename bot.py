@@ -1165,7 +1165,7 @@ async def yt_quality_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
                 "https://cobalt-social-media-downloader.p.rapidapi.com/cobalt-download/",
                 headers=cobalt_headers,
                 json={"url": url, "videoQuality": height, "filenameStyle": "basic", "downloadMode": "auto"},
-                timeout=60
+                timeout=120
             )
             d = r.json()
             print("Cobalt response:", d)
