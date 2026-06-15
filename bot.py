@@ -643,21 +643,37 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     continue
 
             if not download_url:
-                await msg.edit_text(
-                    "❌ دانلود از یوتیوب ممکن نشد.\n"
-                    "احتمالاً ویدیو خصوصی یا age-restricted هست."
-                )
-                return
-
-            # دانلود فایل از لینک cobalt
-            await msg.edit_text("⬇️ دارم فایل رو دریافت میکنم...")
-            with requests.get(download_url, stream=True, timeout=120) as dl:
-                dl.raise_for_status()
-                with open(file_path, "wb") as f:
-                    for chunk in dl.iter_content(chunk_size=1024 * 1024):
-                        if chunk:
-                            f.write(chunk)
-
+                # ─── Fallback: yt-dlp مستقیم ───
+                await msg.edit_text("⬇️ روش دوم: دانلود با yt-dlp...")
+                try:
+                    ydl_opts = {
+                        "outtmpl": file_path,
+                        "format": "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+                        "merge_output_format": "mp4",
+                        "noplaylist": True,
+                        "quiet": True,
+                        # کوکی مرورگر برای دور زدن age-restriction (اختیاری)
+                        # "cookiefile": "youtube_cookies.txt",
+                    }
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        info = ydl.extract_info(text, download=True)
+                        video_title = info.get("title", "YouTube Video")
+                except Exception as ytdlp_err:
+                    logger.error(f"[YouTube/yt-dlp] {ytdlp_err}")
+                    await msg.edit_text(
+                        "❌ دانلود از یوتیوب ممکن نشد.\n"
+                        "احتمالاً ویدیو خصوصی یا age-restricted هست."
+                    )
+                    return
+            else:
+                # دانلود فایل از لینک cobalt
+                await msg.edit_text("⬇️ دارم فایل رو دریافت میکنم...")
+                with requests.get(download_url, stream=True, timeout=120) as dl:
+                    dl.raise_for_status()
+                    with open(file_path, "wb") as f:
+                        for chunk in dl.iter_content(chunk_size=1024 * 1024):
+                            if chunk:
+                                f.write(chunk)
             if not os.path.exists(file_path) or os.path.getsize(file_path) < 1000:
                 await msg.edit_text("❌ فایل دانلود نشد، دوباره امتحان کن.")
                 return
