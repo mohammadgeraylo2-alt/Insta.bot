@@ -653,7 +653,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "noplaylist": True,
                         "quiet": True,
                         # کوکی مرورگر برای دور زدن age-restriction (اختیاری)
-                        # "cookiefile": "youtube_cookies.txt",
+                        # "cookiefile": "cookies.txt",
                     }
                     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                         info = ydl.extract_info(text, download=True)
