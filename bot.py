@@ -606,7 +606,7 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cookie_file = "cookies.txt" if os.path.exists("cookies.txt") else None
             ydl_opts = {
                 "outtmpl": file_path,
-                "format": "bestvideo+bestaudio/best",
+                "format": "best[ext=mp4]/best",
                 "merge_output_format": "mp4",
                 "quiet": True,
                 "noplaylist": True,
