@@ -193,7 +193,8 @@ async def is_member(bot, user_id):
     if not channel:
         return True
     if not channel.startswith("@") and not channel.lstrip("-").isdigit():
-        channel = "@" + channeltry:
+        channel = "@" + channel
+    try:
         member = await bot.get_chat_member(channel, user_id)
         return member.status in ("member", "administrator", "creator")
     except Exception as e:
