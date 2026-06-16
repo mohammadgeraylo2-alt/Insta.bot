@@ -600,14 +600,35 @@ async def handle_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not await check_limit(update, user.id): return
         msg = await update.message.reply_text("⏳ دارم اطلاعات ویدیو رو میگیرم...")
         try:
-            from pytubefix import YouTube
-            yt = YouTube(text)
-            title = yt.title[:200]
-            thumb = yt.thumbnail_url
-            duration = yt.length
-            mins, secs = divmod(duration, 60)
+            import time
+            yt_headers = {
+                "x-rapidapi-key": RAPIDAPI_KEY,
+                "x-rapidapi-host": "youtube-mp4-mp3-downloader.p.rapidapi.com"
+            }
 
-            user_yt_info[user.id] = {"url": text, "title": title}
+            # گرفتن اطلاعات ویدیو
+            r = requests.get(
+                "https://youtube-mp4-mp3-downloader.p.rapidapi.com/api/v1/download",
+                headers=yt_headers,
+                params={"url": text, "quality": "720"},
+                timeout=30
+            )
+            data = r.json()
+            download_id = data.get("id")
+            title = data.get("title", "ویدیو")[:200]
+            thumb = data.get("thumbnail", "")
+            duration = data.get("duration", 0)
+            mins, secs = divmod(int(duration or 0), 60)
+
+            if not download_id:
+                await msg.edit_text("❌ خطا در دریافت اطلاعات ویدیو.")
+                return
+
+            user_yt_info[user.id] = {
+                "url": text,
+                "title": title,
+                "id_720": download_id,
+            }
 
             channel = get_setting("channel") or ""
             clean_ch = channel.lstrip("@")
@@ -1074,34 +1095,46 @@ async def yt_quality_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     clean_ch = channel.lstrip("@")
     caption_base = get_setting("caption") or CAPTION
 
-    from pytubefix import YouTube
-    from pytubefix.cli import on_progress
-    import subprocess
     import time
-
-    def get_yt(link, retries=3):
-        for i in range(retries):
-            try:
-                yt = YouTube(link, use_oauth=False, allow_oauth_cache=False)
-                _ = yt.title
-                return yt
-            except Exception as e:
-                if i < retries - 1:
-                    time.sleep(2)
-                else:
-                    raise e
+    yt_headers = {
+        "x-rapidapi-key": RAPIDAPI_KEY,
+        "x-rapidapi-host": "youtube-mp4-mp3-downloader.p.rapidapi.com"
+    }
 
     if is_audio:
         try:
-            yt = get_yt(url)
-            stream = yt.streams.filter(only_audio=True).order_by("abr").last()
-            path = f"yt_audio_{user_id}.mp4"
-            stream.download(filename=path)
-            mp3_path = f"yt_audio_{user_id}.mp3"
-            subprocess.run(["ffmpeg", "-i", path, "-q:a", "0", mp3_path, "-y"], capture_output=True)
+            r = requests.get(
+                "https://youtube-mp4-mp3-downloader.p.rapidapi.com/api/v1/download",
+                headers=yt_headers,
+                params={"url": url, "quality": "mp3"},
+                timeout=30
+            )
+            download_id = r.json().get("id")
+            if not download_id:
+                await msg.edit_text("❌ خطا در شروع دانلود صدا.")
+                return
+
+            download_url = None
+            for _ in range(20):
+                time.sleep(3)
+                r2 = requests.get(
+                    "https://youtube-mp4-mp3-downloader.p.rapidapi.com/api/v1/progress",
+                    headers=yt_headers,
+                    params={"id": download_id},
+                    timeout=15
+                )
+                progress = r2.json()
+                if progress.get("status") == "finished":
+                    download_url = progress.get("url")
+                    break
+
+            if not download_url:
+                await msg.edit_text("❌ دانلود صدا طول کشید، دوباره امتحان کن.")
+                return
+
             keyboard = [[InlineKeyboardButton("کانال ما 📢", url=f"https://t.me/{clean_ch}")]]
             await query.message.reply_audio(
-                audio=open(mp3_path, "rb"),
+                audio=download_url,
                 title=title,
                 caption=f"{caption_base}\n🎵 {title}"[:1024],
                 reply_markup=InlineKeyboardMarkup(keyboard),
@@ -1111,29 +1144,44 @@ async def yt_quality_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         except Exception as e:
             logger.error(f"[YT audio] {e}")
             await msg.edit_text("❌ دانلود صدا ممکن نشد.")
-        finally:
-            for f in [f"yt_audio_{user_id}.mp4", f"yt_audio_{user_id}.mp3"]:
-                if os.path.exists(f): os.remove(f)
     else:
-        height = int(data.replace("yt_video_", ""))
-        path = f"yt_{user_id}.mp4"
+        height = data.replace("yt_video_", "")
         try:
-            yt = get_yt(url)
-            stream = None
-            for s in sorted(yt.streams.filter(progressive=True, file_extension="mp4"), key=lambda x: int(x.resolution.replace("p","")) if x.resolution else 0, reverse=True):
-                res = int(s.resolution.replace("p","")) if s.resolution else 0
-                if res <= height:
-                    stream = s
+            r = requests.get(
+                "https://youtube-mp4-mp3-downloader.p.rapidapi.com/api/v1/download",
+                headers=yt_headers,
+                params={"url": url, "quality": height},
+                timeout=30
+            )
+            download_id = r.json().get("id")
+            if not download_id:
+                await msg.edit_text("❌ خطا در شروع دانلود.")
+                return
+
+            download_url = None
+            for _ in range(20):
+                time.sleep(3)
+                r2 = requests.get(
+                    "https://youtube-mp4-mp3-downloader.p.rapidapi.com/api/v1/progress",
+                    headers=yt_headers,
+                    params={"id": download_id},
+                    timeout=15
+                )
+                progress = r2.json()
+                if progress.get("status") == "finished":
+                    download_url = progress.get("url")
                     break
-            if not stream:
-                stream = yt.streams.filter(progressive=True, file_extension="mp4").order_by("resolution").last()
-            stream.download(filename=path)
+
+            if not download_url:
+                await msg.edit_text("❌ دانلود طول کشید، دوباره امتحان کن.")
+                return
+
             keyboard = [
                 [InlineKeyboardButton("کانال ما 📢", url=f"https://t.me/{clean_ch}")],
                 [InlineKeyboardButton("دریافت آهنگ 🎵", callback_data="get_song")]
             ]
             await query.message.reply_video(
-                video=open(path, "rb"),
+                video=download_url,
                 caption=f"{caption_base}\n🎬 {title}"[:1024],
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 supports_streaming=True,
@@ -1143,8 +1191,6 @@ async def yt_quality_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         except Exception as e:
             logger.error(f"[YT video] {e}")
             await msg.edit_text("❌ دانلود ویدیو ممکن نشد.")
-        finally:
-            if os.path.exists(path): os.remove(path)
 
 # ─── handlers ─────────────────────────────────────────────────
 builder = ApplicationBuilder().token(TOKEN)
