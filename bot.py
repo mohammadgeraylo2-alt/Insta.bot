@@ -120,7 +120,7 @@ def init_db():
             UNIQUE(quiz_id, player_id, q_index)
         );
         INSERT OR IGNORE INTO stats (id, today_date) VALUES (1, date('now'));
-        INSERT OR IGNORE INTO settings VALUES ('channel', '@downloader_hamechi');
+        INSERT OR IGNORE INTO settings VALUES ('channel', '@InstaSaveXX');
         INSERT OR IGNORE INTO settings VALUES ('free_limit', '5');
         INSERT OR IGNORE INTO settings VALUES ('maintenance', '0');
         INSERT OR IGNORE INTO settings VALUES ('caption', '🎵 ربات موزیک یاب و دانلود\n @downloader_hamechi');
