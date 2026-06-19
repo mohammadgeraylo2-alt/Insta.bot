@@ -1,6 +1,13 @@
 {
   "build": {
-    "builder": "NIXPACKS"
+    "builder": "NIXPACKS",
+    "nixpacksPlan": {
+      "phases": {
+        "setup": {
+          "nixPkgs": ["ffmpeg"]
+        }
+      }
+    }
   },
   "deploy": {
     "startCommand": "python bot.py",
