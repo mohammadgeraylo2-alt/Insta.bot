@@ -26,7 +26,7 @@ HF_TOKEN = os.environ.get("HF_TOKEN", "")
 REPLICATE_TOKEN = os.environ.get("REPLICATE_TOKEN", "")
 ANTHROPIC_KEY = os.environ.get("ANTHROPIC_KEY", "")
 
-CAPTION = "🎵 ربات موزیک یاب و دانلود\n @downloader_hamechi"
+CAPTION = "🎵 ربات موزیک یاب و دانلود\n @InstaSaveXX"
 ADMIN_ID = 6206120591  # @Justt_mmd
 
 user_urls = {}
