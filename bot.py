@@ -1561,7 +1561,7 @@ async def shazam_detect_from_file_async(input_path):
         ret = subprocess.run([
             _ffmpeg, "-y", "-i", input_path,
             "-t", "20",
-            "-vn", "-ar", "44100", "-ac", "1",
+            "-vn", "-ar", "44100", "-ac", "2",
             "-f", "wav",
             tmp_audio
         ], capture_output=True, timeout=30)
