@@ -1627,7 +1627,7 @@ async def audd_detect_from_file_async(input_path):
         with open(tmp_audio, "rb") as f:
             resp = requests.post(
                 "https://api.audd.io/",
-                data={"api_token": "5d2a399b17c22d1c00222011f7c912dc", "return": "apple_music,spotify"},
+                data={"api_token": "afd4ca4db69cf9047ceb219d535fef97", "return": "apple_music,spotify"},
                 files={"file": f},
                 timeout=20
             )
