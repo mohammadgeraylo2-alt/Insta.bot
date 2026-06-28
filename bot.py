@@ -328,7 +328,7 @@ async def send_config_to_user(message, user_id):
         f"`{config}`\n\n"
         f"─────────────────\n"
         f"📲 NPV رو باز کن ← ➕ ← Paste ← Connect\n"
-        f"📢 @V2Ray\_Drop"
+        f"📢 @InstaSaveXX"
     )
 
     keyboard = []
