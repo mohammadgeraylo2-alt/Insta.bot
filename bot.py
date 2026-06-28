@@ -43,6 +43,7 @@ MODELSLAB_KEY = os.environ.get("MODELSLAB_KEY", "")
 HF_TOKEN = os.environ.get("HF_TOKEN", "")
 REPLICATE_TOKEN = os.environ.get("REPLICATE_TOKEN", "")
 ANTHROPIC_KEY = os.environ.get("ANTHROPIC_KEY", "")
+INSTAGRAM_COOKIES = os.environ.get("INSTAGRAM_COOKIES", "")
 
 CAPTION = "🎵 ربات موزیک یاب و دانلود\n @InstaSaveXX"
 ADMIN_ID = 6206120591  # @Justt_mmd
