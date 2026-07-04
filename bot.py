@@ -95,7 +95,7 @@ def pro_social_get_userid(username: str):
             params={"username": username, "safe_url": "false"},
             timeout=20,
         )
-        dd = r.json()
+        d = r.json()
         logger.info(f"Pro Social userinfo raw: {str(d)[:300]}")
         if isinstance(d, dict):
             data = d.get("user") or d.get("data") or d
@@ -108,6 +108,7 @@ def pro_social_get_userid(username: str):
                     return str(uid)
     except Exception as e:
         logger.warning(f"Pro Social userinfo error: {e}")
+    return None
     return None
 
 def pro_social_story_download(userid: str):
