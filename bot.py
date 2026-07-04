@@ -86,29 +86,7 @@ def _extract_first_video_url(d):
                 return found
     return None
 
-def pro_social_get_userid(username: str):
-    """گرفتن userid عددی از روی یوزرنیم، لازم برای دانلود استوری"""
-    try:
-        r = requests.get(
-            f"https://{PRO_SOCIAL_HOST}/userinfo_username/",
-            headers={"x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": PRO_SOCIAL_HOST},
-            params={"username": username, "safe_url": "false"},
-            timeout=20,
-        )
-        d = r.json()
-        logger.info(f"Pro Social userinfo raw: {str(d)[:300]}")
-        if isinstance(d, dict):
-            data = d.get("user") or d.get("data") or d
-            if isinstance(data, dict):
-                uid = (
-                    data.get("id") or data.get("pk") or data.get("user_id")
-                    or data.get("pk_id") or data.get("userid")
-                )
-                if uid:
-                    return str(uid)
-    except Exception as e:
-        logger.warning(f"Pro Social userinfo error: {e}")
-    return None
+
     return None
 
 def pro_social_story_download(userid: str):
@@ -128,7 +106,30 @@ def pro_social_story_download(userid: str):
     return None
 
 def pro_social_post_detail(shortcode: str):
-    """دانلود پست/ریلز با shortcode، برمی‌گردونه video_url"""
+    """دانلود پست/رdef pro_social_get_userid(username: str):
+    """گرفتن userid عددی از روی یوزرنیم، لازم برای دانلود استوری"""
+    try:
+        r = requests.get(
+            f"https://{PRO_SOCIAL_HOST}/userinfo_username/",
+            headers={"x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": PRO_SOCIAL_HOST},
+            params={"username": username, "safe_url": "false"},
+            timeout=20,
+        )
+        d = r.json()
+        logger.info(f"Pro Social userinfo raw: {str(d)[:500]}")
+        if isinstance(d, dict):
+            data = d.get("user") or d.get("data") or d
+            if isinstance(data, dict):
+                uid = (
+                    data.get("id") or data.get("pk") or data.get("user_id")
+                    or data.get("pk_id") or data.get("userid")
+                )
+                if uid:
+                    logger.info(f"Pro Social extracted userid: {uid}")
+                    return str(uid)
+    except Exception as e:
+        logger.warning(f"Pro Social userinfo error: {e}")
+    return Noneیلز با shortcode، برمی‌گردونه video_url"""
     try:
         r = requests.get(
             f"https://{PRO_SOCIAL_HOST}/postdetail/",
