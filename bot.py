@@ -95,13 +95,17 @@ def pro_social_get_userid(username: str):
             params={"username": username, "safe_url": "false"},
             timeout=20,
         )
-        d = r.json()
+        dd = r.json()
         logger.info(f"Pro Social userinfo raw: {str(d)[:300]}")
         if isinstance(d, dict):
-            data = d.get("data", d)
-            uid = data.get("id") or data.get("pk") or data.get("user_id")
-            if uid:
-                return str(uid)
+            data = d.get("user") or d.get("data") or d
+            if isinstance(data, dict):
+                uid = (
+                    data.get("id") or data.get("pk") or data.get("user_id")
+                    or data.get("pk_id") or data.get("userid")
+                )
+                if uid:
+                    return str(uid)
     except Exception as e:
         logger.warning(f"Pro Social userinfo error: {e}")
     return None
