@@ -99,7 +99,7 @@ def pro_social_story_download(userid: str):
             timeout=25,
         )
         d = r.json()
-        logger.info(f"Pro Social story raw: {str(d)[:300]}")
+        logger.info(f"Pro Social story raw: {str(d)[:500]}")
         return _extract_first_video_url(d)
     except Exception as e:
         logger.warning(f"Pro Social story error: {e}")
